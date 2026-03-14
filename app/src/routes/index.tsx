@@ -1,4 +1,6 @@
 import { createBrowserRouter } from 'react-router-dom';
+import CreateUserPage from '../pages/CreateUserPage';
+import UserDetailPage from '../pages/UserDetailPage';
 import AppLayout from '../layouts/AppLayout';
 import AdminPage from '../pages/AdminPage';
 import AnnouncementsPage from '../pages/AnnouncementsPage';
@@ -19,6 +21,9 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <DashboardPage /> },
       { path: 'training', element: <TrainingPage /> },
+      { path: 'users', element: <UsersPage /> },
+      { path: 'users/new', element: <CreateUserPage /> },
+      { path: 'users/:userId', element: <UserDetailPage /> },
       { path: 'certifications', element: <CertificationsPage /> },
       { path: 'place-charts', element: <PlaceChartsPage /> },
       { path: 'users', element: <UsersPage /> },

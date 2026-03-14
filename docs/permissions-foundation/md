@@ -1,0 +1,81 @@
+# KB Academy Permissions Foundation
+
+## Base Roles
+- Admin
+- Manager
+- Supervisor
+- Team Lead
+- Operator
+- Trainer
+- Team Member
+- FSQA
+- People Services
+
+## Permission Strategy
+KB Academy uses:
+- base role templates
+- configurable permission matrix
+- user-level overrides
+- feature toggles such as trainer-enabled access
+
+## Early Permission Areas
+- View Dashboard
+- View Training
+- Assign Training
+- Edit Training Modules
+- Deliver Training
+- Log Training Hours
+- View Certifications
+- Approve Retakes
+- Override Certification
+- View Place Charts
+- Generate Place Charts
+- Edit Place Charts
+- View Users
+- Create Users
+- Edit Users
+- Reset Passwords
+- Reset PINs
+- View Reports
+- Export Reports
+- View Documents
+- Manage Documents
+- View Admin
+- Edit Settings
+- View Audit Log
+- Impersonate Users
+
+## Role Intent
+### Admin
+Full access.
+
+### Manager
+Broad operational and reporting access with settings access as configured.
+
+### Supervisor
+Department-focused user, training, certification, and place chart access.
+
+### Trainer
+Training delivery, hour logging, and trainee support access.
+
+### Team Lead
+Operational distinction with configurable permissions.
+
+### Operator
+Own training and limited operational visibility.
+
+### Team Member
+Own training only.
+
+### FSQA
+Compliance and training-related access for quality workflows.
+
+### People Services
+Read-only or reporting-focused people data access.
+
+## Notes
+Later database tables should separate:
+- roles
+- permissions
+- role_permissions
+- user_permission_overrides
