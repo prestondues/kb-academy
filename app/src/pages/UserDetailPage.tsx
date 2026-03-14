@@ -1,18 +1,52 @@
-import { useMemo } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { useParams } from 'react-router-dom';
 import ContentCard from '../components/ContentCard';
 import PageContainer from '../components/PageContainer';
 import PrimaryButton from '../components/PrimaryButton';
 import StatusBadge from '../components/StatusBadge';
-import { mockUsers } from '../features/users/mockUsers';
+import { getUserById } from '../features/users/usersApi';
+import {
+  mapProfileToUserCard,
+  type UserCardModel,
+} from '../features/users/userMappers';
 
 function UserDetailPage() {
   const { userId } = useParams();
+  const [user, setUser] = useState<UserCardModel | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const user = useMemo(
-    () => mockUsers.find((item) => item.id === userId),
-    [userId]
-  );
+useEffect(() => {
+  async function loadUser() {
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const data = await getUserById(userId);
+      if (data) {
+        setUser(mapProfileToUserCard(data));
+      } else {
+        setUser(null);
+      }
+    } catch (error) {
+      console.error(error);
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  loadUser();
+}, [userId]);
+
+  if (loading) {
+    return (
+      <PageContainer title="Loading user..." subtitle="Please wait.">
+        <ContentCard title="Loading">Fetching user profile.</ContentCard>
+      </PageContainer>
+    );
+  }
 
   if (!user) {
     return (
@@ -59,11 +93,15 @@ function UserDetailPage() {
             </div>
             <div style={rowStyle}>
               <span style={labelStyle}>Hire Date</span>
-              <span>{user.hireDate}</span>
+              <span>{user.hireDate || '—'}</span>
             </div>
             <div style={rowStyle}>
               <span style={labelStyle}>Birthday</span>
-              <span>{user.birthday}</span>
+              <span>{user.birthday || '—'}</span>
+            </div>
+            <div style={rowStyle}>
+              <span style={labelStyle}>Email</span>
+              <span>{user.email || '—'}</span>
             </div>
           </div>
         </ContentCard>
@@ -99,7 +137,7 @@ function UserDetailPage() {
   );
 }
 
-const rowStyle: React.CSSProperties = {
+const rowStyle: CSSProperties = {
   display: 'flex',
   justifyContent: 'space-between',
   gap: '16px',
@@ -107,7 +145,7 @@ const rowStyle: React.CSSProperties = {
   borderBottom: '1px solid #eef3f8',
 };
 
-const labelStyle: React.CSSProperties = {
+const labelStyle: CSSProperties = {
   color: '#5f6b76',
   fontWeight: 600,
 };

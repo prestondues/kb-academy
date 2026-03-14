@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom';
 import StatusBadge from '../../components/StatusBadge';
-import type { AppUser } from './types';
+import type { UserCardModel } from './userMappers';
 
 type UserListCardProps = {
-  user: AppUser;
+  user: UserCardModel;
 };
 
 function UserListCard({ user }: UserListCardProps) {
