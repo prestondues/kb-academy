@@ -1,8 +1,12 @@
+import { supabase } from './lib/supabase';
+
 function App() {
+  console.log('Supabase client ready:', supabase);
+
   return (
     <div style={{ padding: '24px', fontFamily: 'sans-serif' }}>
       <h1>KB Academy</h1>
-      <p>Development environment is working.</p>
+      <p>App initialized and Supabase client configured.</p>
     </div>
   );
 }
