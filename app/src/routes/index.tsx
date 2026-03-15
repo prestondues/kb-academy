@@ -1,9 +1,12 @@
 import { createBrowserRouter } from 'react-router-dom';
+import AccountStateGate from '../features/auth/AccountStateGate';
 import ProtectedRoute from '../features/auth/ProtectedRoute';
 import AppLayout from '../layouts/AppLayout';
 import AdminPage from '../pages/AdminPage';
 import AnnouncementsPage from '../pages/AnnouncementsPage';
 import CertificationsPage from '../pages/CertificationsPage';
+import ChangePasswordPage from '../pages/ChangePasswordPage';
+import CreatePinPage from '../pages/CreatePinPage';
 import CreateUserPage from '../pages/CreateUserPage';
 import DashboardPage from '../pages/DashboardPage';
 import DocumentsPage from '../pages/DocumentsPage';
@@ -21,10 +24,28 @@ export const router = createBrowserRouter([
     element: <LoginPage />,
   },
   {
+    path: '/change-password',
+    element: (
+      <ProtectedRoute>
+        <ChangePasswordPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/create-pin',
+    element: (
+      <ProtectedRoute>
+        <CreatePinPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
     path: '/',
     element: (
       <ProtectedRoute>
-        <AppLayout />
+        <AccountStateGate>
+          <AppLayout />
+        </AccountStateGate>
       </ProtectedRoute>
     ),
     errorElement: <NotFoundPage />,
