@@ -1,8 +1,20 @@
 import { Outlet } from 'react-router-dom';
 import NavItem from '../components/NavItem';
+import { signOut } from '../lib/auth';
+import { useAuth } from '../features/auth/useAuth';
 import { theme } from '../styles/theme';
 
 function AppLayout() {
+  const { user } = useAuth();
+
+  async function handleSignOut() {
+    try {
+      await signOut();
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
   return (
     <div
       style={{
@@ -50,10 +62,24 @@ function AppLayout() {
             paddingTop: '16px',
           }}
         >
-          <div style={{ fontSize: '13px', fontWeight: 700 }}>Preston Dues</div>
-          <div style={{ fontSize: '12px', opacity: 0.75, marginTop: '4px' }}>
-            Admin
+          <div style={{ fontSize: '13px', fontWeight: 700 }}>
+            {user?.email ?? 'Signed In User'}
           </div>
+          <button
+            onClick={handleSignOut}
+            style={{
+              marginTop: '10px',
+              width: '100%',
+              background: 'rgba(255,255,255,0.08)',
+              color: '#ffffff',
+              border: '1px solid rgba(255,255,255,0.12)',
+              borderRadius: '12px',
+              padding: '10px 12px',
+              cursor: 'pointer',
+            }}
+          >
+            Sign Out
+          </button>
         </div>
       </aside>
 
@@ -89,23 +115,7 @@ function AppLayout() {
                 fontWeight: 600,
               }}
             >
-              3 Notifications
-            </div>
-
-            <div
-              style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '50%',
-                background: theme.colors.lightBlue,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: theme.colors.navy,
-                fontWeight: 700,
-              }}
-            >
-              P
+              {user?.email ?? 'No Active User'}
             </div>
           </div>
         </header>
