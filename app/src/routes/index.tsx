@@ -7,6 +7,7 @@ import AnnouncementsPage from '../pages/AnnouncementsPage';
 import CertificationsPage from '../pages/CertificationsPage';
 import ChangePasswordPage from '../pages/ChangePasswordPage';
 import CreatePinPage from '../pages/CreatePinPage';
+import CreateTrainingModulePage from '../pages/CreateTrainingModulePage';
 import CreateUserPage from '../pages/CreateUserPage';
 import DashboardPage from '../pages/DashboardPage';
 import DocumentsPage from '../pages/DocumentsPage';
@@ -14,6 +15,7 @@ import LoginPage from '../pages/LoginPage';
 import NotFoundPage from '../pages/NotFoundPage';
 import PlaceChartsPage from '../pages/PlaceChartsPage';
 import ReportsPage from '../pages/ReportsPage';
+import TrainingModuleDetailPage from '../pages/TrainingModuleDetailPage';
 import TrainingPage from '../pages/TrainingPage';
 import UserDetailPage from '../pages/UserDetailPage';
 import UsersPage from '../pages/UsersPage';
@@ -52,6 +54,8 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <DashboardPage /> },
       { path: 'training', element: <TrainingPage /> },
+      { path: 'training/new', element: <CreateTrainingModulePage /> },
+      { path: 'training/:moduleId', element: <TrainingModuleDetailPage /> },
       { path: 'certifications', element: <CertificationsPage /> },
       { path: 'place-charts', element: <PlaceChartsPage /> },
       { path: 'users', element: <UsersPage /> },
