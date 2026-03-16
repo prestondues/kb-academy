@@ -123,3 +123,49 @@ export async function createUser(input: CreateUserInput) {
   if (error) throw error;
   return data;
 }
+type CreateManagedUserInput = {
+  email: string;
+  password: string;
+  employee_id: string;
+  username: string;
+  first_name: string;
+  last_name: string;
+  role_id: string;
+  home_department_id: string;
+  home_shift_id: string;
+  hire_date?: string;
+  birthday?: string;
+  probationary: boolean;
+  trainer_enabled: boolean;
+};
+
+export async function createManagedUser(input: CreateManagedUserInput) {
+  const { data, error } = await supabase.functions.invoke('create-user', {
+    body: input,
+  });
+
+  if (error) {
+    console.error('FUNCTION INVOKE ERROR:', error);
+
+    const response = (error as { context?: Response }).context;
+
+    if (response instanceof Response) {
+      const rawText = await response.text();
+
+      try {
+        const body = JSON.parse(rawText);
+        throw new Error(body?.error || error.message);
+      } catch {
+        throw new Error(rawText || error.message);
+      }
+    }
+
+    throw new Error(error.message || 'Failed to create managed user.');
+  }
+
+  if (data?.error) {
+    throw new Error(data.error);
+  }
+
+  return data;
+}

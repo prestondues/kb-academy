@@ -15,30 +15,30 @@ function UserDetailPage() {
   const [user, setUser] = useState<UserCardModel | null>(null);
   const [loading, setLoading] = useState(true);
 
-useEffect(() => {
-  async function loadUser() {
-    if (!userId) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const data = await getUserById(userId);
-      if (data) {
-        setUser(mapProfileToUserCard(data));
-      } else {
-        setUser(null);
+  useEffect(() => {
+    async function loadUser() {
+      if (!userId) {
+        setLoading(false);
+        return;
       }
-    } catch (error) {
-      console.error(error);
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
-  }
 
-  loadUser();
-}, [userId]);
+      try {
+        const data = await getUserById(userId);
+        if (data) {
+          setUser(mapProfileToUserCard(data));
+        } else {
+          setUser(null);
+        }
+      } catch (error) {
+        console.error(error);
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadUser();
+  }, [userId]);
 
   if (loading) {
     return (
@@ -65,20 +65,26 @@ useEffect(() => {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '1.2fr 1fr',
+          gridTemplateColumns: '1.4fr 1fr',
           gap: '16px',
         }}
       >
         <ContentCard title="Profile Overview" subtitle="Core employee and access information.">
-          <div style={{ display: 'grid', gap: '16px' }}>
-            <div style={rowStyle}>
-              <span style={labelStyle}>Username</span>
-              <span>{user.username}</span>
+          <div style={heroWrapStyle}>
+            <div style={avatarStyle}>
+              {user.firstName?.[0]}
+              {user.lastName?.[0]}
             </div>
-            <div style={rowStyle}>
-              <span style={labelStyle}>Employee ID</span>
-              <span>{user.employeeId}</span>
+
+            <div>
+              <div style={{ fontSize: '24px', fontWeight: 800 }}>{user.fullName}</div>
+              <div style={{ marginTop: '6px', color: '#5f6b76' }}>
+                @{user.username} • {user.employeeId}
+              </div>
             </div>
+          </div>
+
+          <div style={{ display: 'grid', gap: '16px', marginTop: '20px' }}>
             <div style={rowStyle}>
               <span style={labelStyle}>Role</span>
               <span>{user.role}</span>
@@ -136,6 +142,25 @@ useEffect(() => {
     </PageContainer>
   );
 }
+
+const heroWrapStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '16px',
+};
+
+const avatarStyle: CSSProperties = {
+  width: '64px',
+  height: '64px',
+  borderRadius: '50%',
+  background: '#a2c7e2',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontWeight: 800,
+  fontSize: '20px',
+  color: '#081f2d',
+};
 
 const rowStyle: CSSProperties = {
   display: 'flex',
