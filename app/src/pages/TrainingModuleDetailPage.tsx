@@ -1,16 +1,23 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import ContentCard from '../components/ContentCard';
 import PageContainer from '../components/PageContainer';
 import PrimaryButton from '../components/PrimaryButton';
 import StatusBadge from '../components/StatusBadge';
-import { getTrainingModuleById } from '../features/training/trainingApi';
+import {
+  getTrainingModuleById,
+  getTrainingSections,
+} from '../features/training/trainingApi';
 import { mapTrainingModuleToCard } from '../features/training/trainingMappers';
+import { mapTrainingSectionToCard } from '../features/training/sectionMappers';
 import type { TrainingModuleCardModel } from '../features/training/types';
+import type { TrainingSectionCardModel } from '../features/training/sectionTypes';
+import TrainingSectionCard from '../features/training/TrainingSectionCard';
 
 function TrainingModuleDetailPage() {
   const { moduleId } = useParams();
   const [module, setModule] = useState<TrainingModuleCardModel | null>(null);
+  const [sections, setSections] = useState<TrainingSectionCardModel[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -21,15 +28,22 @@ function TrainingModuleDetailPage() {
       }
 
       try {
-        const data = await getTrainingModuleById(moduleId);
-        if (data) {
-          setModule(mapTrainingModuleToCard(data));
+        const [moduleData, sectionData] = await Promise.all([
+          getTrainingModuleById(moduleId),
+          getTrainingSections(moduleId),
+        ]);
+
+        if (moduleData) {
+          setModule(mapTrainingModuleToCard(moduleData));
         } else {
           setModule(null);
         }
+
+        setSections(sectionData.map(mapTrainingSectionToCard));
       } catch (error) {
         console.error(error);
         setModule(null);
+        setSections([]);
       } finally {
         setLoading(false);
       }
@@ -58,16 +72,41 @@ function TrainingModuleDetailPage() {
     <PageContainer
       title={module.title}
       subtitle={`${module.moduleType} • ${module.department}`}
-      actions={<PrimaryButton>Edit Module</PrimaryButton>}
+      actions={
+        <Link to={`/training/${module.id}/sections/new`} style={{ textDecoration: 'none' }}>
+          <PrimaryButton>Add Section</PrimaryButton>
+        </Link>
+      }
     >
       <div
         style={{
           display: 'grid',
           gridTemplateColumns: '1.35fr 1fr',
           gap: '16px',
+          marginBottom: '18px',
         }}
       >
-        <ContentCard title="Module Overview" subtitle="Core training module settings.">
+        <ContentCard
+          title="Module Overview"
+          subtitle="Core training module settings."
+          actions={
+            <Link
+              to={`/training/${module.id}/edit`}
+              style={{
+                textDecoration: 'none',
+                fontSize: '13px',
+                fontWeight: 700,
+                color: '#194f91',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              <span>✎</span>
+              <span>Edit</span>
+            </Link>
+          }
+        >
           <div style={{ display: 'grid', gap: '16px' }}>
             <div>
               <div style={{ fontWeight: 800, marginBottom: '6px' }}>Description</div>
@@ -100,20 +139,45 @@ function TrainingModuleDetailPage() {
         <div style={{ display: 'grid', gap: '16px' }}>
           <ContentCard title="Module Flags">
             <div style={{ display: 'grid', gap: '12px' }}>
-              <StatusBadge label={module.status} variant={module.status === 'Active' ? 'success' : 'danger'} />
-              <StatusBadge label={module.requiresQuiz ? 'Quiz Required' : 'No Quiz'} variant={module.requiresQuiz ? 'info' : 'warning'} />
-              <StatusBadge label={module.allergenFlag ? 'Allergen Flag On' : 'No Allergen Flag'} variant={module.allergenFlag ? 'warning' : 'success'} />
+              <StatusBadge
+                label={module.status}
+                variant={module.status === 'Active' ? 'success' : 'danger'}
+              />
+              <StatusBadge
+                label={module.requiresQuiz ? 'Quiz Required' : 'No Quiz'}
+                variant={module.requiresQuiz ? 'info' : 'warning'}
+              />
+              <StatusBadge
+                label={module.allergenFlag ? 'Allergen Flag On' : 'No Allergen Flag'}
+                variant={module.allergenFlag ? 'warning' : 'success'}
+              />
             </div>
           </ContentCard>
 
-          <ContentCard title="Next Build Step">
-            <p style={{ margin: 0, color: '#5f6b76', lineHeight: 1.6 }}>
-              The next training phase will add module sections, content blocks,
-              delivery flow, sign-off behavior, and certification logic.
-            </p>
+          <ContentCard title="Section Summary">
+            <div style={{ color: '#5f6b76', lineHeight: 1.6 }}>
+              {sections.length} section{sections.length === 1 ? '' : 's'} currently configured.
+            </div>
           </ContentCard>
         </div>
       </div>
+
+      <ContentCard
+        title="Module Sections"
+        subtitle="Ordered content blocks inside this training module."
+      >
+        {sections.length === 0 ? (
+          <div style={{ padding: '10px 0', color: '#5f6b76' }}>
+            No sections yet. Add your first section to begin building the module.
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gap: '12px' }}>
+            {sections.map((section) => (
+              <TrainingSectionCard key={section.id} section={section} />
+            ))}
+          </div>
+        )}
+      </ContentCard>
     </PageContainer>
   );
 }

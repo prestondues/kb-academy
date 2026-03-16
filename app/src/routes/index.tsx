@@ -19,6 +19,8 @@ import TrainingModuleDetailPage from '../pages/TrainingModuleDetailPage';
 import TrainingPage from '../pages/TrainingPage';
 import UserDetailPage from '../pages/UserDetailPage';
 import UsersPage from '../pages/UsersPage';
+import CreateTrainingSectionPage from '../pages/CreateTrainingSectionPage';
+import EditTrainingModulePage from '../pages/EditTrainingModulePage';
 
 export const router = createBrowserRouter([
   {
@@ -56,6 +58,8 @@ export const router = createBrowserRouter([
       { path: 'training', element: <TrainingPage /> },
       { path: 'training/new', element: <CreateTrainingModulePage /> },
       { path: 'training/:moduleId', element: <TrainingModuleDetailPage /> },
+      { path: 'training/:moduleId/edit', element: <EditTrainingModulePage /> },
+      { path: 'training/:moduleId/sections/new', element: <CreateTrainingSectionPage /> },
       { path: 'certifications', element: <CertificationsPage /> },
       { path: 'place-charts', element: <PlaceChartsPage /> },
       { path: 'users', element: <UsersPage /> },

@@ -5,6 +5,7 @@ export type TrainingModuleRecord = {
   title: string;
   description?: string | null;
   module_type: TrainingModuleType;
+  department_id?: string | null;
   department?: { name?: string | null } | null;
   required_hours?: number | null;
   recert_frequency_days?: number | null;
