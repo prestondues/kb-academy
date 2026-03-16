@@ -21,6 +21,7 @@ import UserDetailPage from '../pages/UserDetailPage';
 import UsersPage from '../pages/UsersPage';
 import CreateTrainingSectionPage from '../pages/CreateTrainingSectionPage';
 import EditTrainingModulePage from '../pages/EditTrainingModulePage';
+import EditTrainingSectionPage from '../pages/EditTrainingSectionPage';
 
 export const router = createBrowserRouter([
   {
@@ -60,6 +61,7 @@ export const router = createBrowserRouter([
       { path: 'training/:moduleId', element: <TrainingModuleDetailPage /> },
       { path: 'training/:moduleId/edit', element: <EditTrainingModulePage /> },
       { path: 'training/:moduleId/sections/new', element: <CreateTrainingSectionPage /> },
+      { path: 'training/:moduleId/sections/:sectionId/edit', element: <EditTrainingSectionPage /> },
       { path: 'certifications', element: <CertificationsPage /> },
       { path: 'place-charts', element: <PlaceChartsPage /> },
       { path: 'users', element: <UsersPage /> },

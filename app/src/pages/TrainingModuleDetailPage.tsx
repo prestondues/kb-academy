@@ -5,8 +5,10 @@ import PageContainer from '../components/PageContainer';
 import PrimaryButton from '../components/PrimaryButton';
 import StatusBadge from '../components/StatusBadge';
 import {
+  deleteTrainingSection,
   getTrainingModuleById,
   getTrainingSections,
+  updateTrainingSectionSortOrder,
 } from '../features/training/trainingApi';
 import { mapTrainingModuleToCard } from '../features/training/trainingMappers';
 import { mapTrainingSectionToCard } from '../features/training/sectionMappers';
@@ -19,38 +21,86 @@ function TrainingModuleDetailPage() {
   const [module, setModule] = useState<TrainingModuleCardModel | null>(null);
   const [sections, setSections] = useState<TrainingSectionCardModel[]>([]);
   const [loading, setLoading] = useState(true);
+  const [draggedSectionId, setDraggedSectionId] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function loadModule() {
-      if (!moduleId) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const [moduleData, sectionData] = await Promise.all([
-          getTrainingModuleById(moduleId),
-          getTrainingSections(moduleId),
-        ]);
-
-        if (moduleData) {
-          setModule(mapTrainingModuleToCard(moduleData));
-        } else {
-          setModule(null);
-        }
-
-        setSections(sectionData.map(mapTrainingSectionToCard));
-      } catch (error) {
-        console.error(error);
-        setModule(null);
-        setSections([]);
-      } finally {
-        setLoading(false);
-      }
+  async function loadModuleData() {
+    if (!moduleId) {
+      setLoading(false);
+      return;
     }
 
-    loadModule();
+    try {
+      const [moduleData, sectionData] = await Promise.all([
+        getTrainingModuleById(moduleId),
+        getTrainingSections(moduleId),
+      ]);
+
+      if (moduleData) {
+        setModule(mapTrainingModuleToCard(moduleData));
+      } else {
+        setModule(null);
+      }
+
+      setSections(sectionData.map(mapTrainingSectionToCard));
+    } catch (error) {
+      console.error(error);
+      setModule(null);
+      setSections([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadModuleData();
   }, [moduleId]);
+
+  async function handleDeleteSection(sectionId: string) {
+    const confirmed = window.confirm('Delete this section?');
+    if (!confirmed) return;
+
+    try {
+      await deleteTrainingSection(sectionId);
+      await loadModuleData();
+    } catch (error) {
+      console.error('DELETE SECTION ERROR:', error);
+      alert('Failed to delete section.');
+    }
+  }
+
+  async function handleDrop(targetSectionId: string) {
+    if (!draggedSectionId || draggedSectionId === targetSectionId) return;
+
+    const currentSections = [...sections];
+    const draggedIndex = currentSections.findIndex((s) => s.id === draggedSectionId);
+    const targetIndex = currentSections.findIndex((s) => s.id === targetSectionId);
+
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    const [draggedItem] = currentSections.splice(draggedIndex, 1);
+    currentSections.splice(targetIndex, 0, draggedItem);
+
+    const reordered = currentSections.map((section, index) => ({
+      ...section,
+      sortOrder: index + 1,
+    }));
+
+    setSections(reordered);
+    setDraggedSectionId(null);
+
+    try {
+      await Promise.all(
+        reordered.map((section, index) =>
+          updateTrainingSectionSortOrder(section.id, index + 1)
+        )
+      );
+      await loadModuleData();
+    } catch (error) {
+      console.error('DRAG REORDER ERROR:', error);
+      alert('Failed to reorder sections.');
+      await loadModuleData();
+    }
+  }
 
   if (loading) {
     return (
@@ -158,6 +208,9 @@ function TrainingModuleDetailPage() {
             <div style={{ color: '#5f6b76', lineHeight: 1.6 }}>
               {sections.length} section{sections.length === 1 ? '' : 's'} currently configured.
             </div>
+            <div style={{ marginTop: '10px', fontSize: '13px', color: '#5f6b76' }}>
+              Drag and drop sections to reorder them.
+            </div>
           </ContentCard>
         </div>
       </div>
@@ -173,7 +226,16 @@ function TrainingModuleDetailPage() {
         ) : (
           <div style={{ display: 'grid', gap: '12px' }}>
             {sections.map((section) => (
-              <TrainingSectionCard key={section.id} section={section} />
+              <TrainingSectionCard
+                key={section.id}
+                section={section}
+                moduleId={module.id}
+                onDelete={() => handleDeleteSection(section.id)}
+                onDragStart={() => setDraggedSectionId(section.id)}
+                onDragOver={() => {}}
+                onDrop={() => handleDrop(section.id)}
+                isDragging={draggedSectionId === section.id}
+              />
             ))}
           </div>
         )}

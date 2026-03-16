@@ -170,6 +170,28 @@ export async function getTrainingSections(
   return (data ?? []) as unknown as TrainingSectionRecord[];
 }
 
+export async function getTrainingSectionById(
+  sectionId: string
+): Promise<TrainingSectionRecord | null> {
+  const { data, error } = await supabase
+    .from('training_module_sections')
+    .select(`
+      id,
+      module_id,
+      title,
+      section_type,
+      body_text,
+      media_url,
+      sort_order,
+      is_required
+    `)
+    .eq('id', sectionId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return (data ?? null) as unknown as TrainingSectionRecord | null;
+}
+
 type CreateTrainingSectionInput = {
   module_id: string;
   title: string;
@@ -188,6 +210,58 @@ export async function createTrainingSection(input: CreateTrainingSectionInput) {
       body_text: input.body_text || null,
       media_url: input.media_url || null,
     })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+type UpdateTrainingSectionInput = {
+  title: string;
+  section_type: 'text' | 'video' | 'image' | 'pdf' | 'acknowledgement';
+  body_text?: string | null;
+  media_url?: string | null;
+  sort_order: number;
+  is_required: boolean;
+};
+
+export async function updateTrainingSection(
+  sectionId: string,
+  input: UpdateTrainingSectionInput
+) {
+  const { data, error } = await supabase
+    .from('training_module_sections')
+    .update({
+      ...input,
+      body_text: input.body_text || null,
+      media_url: input.media_url || null,
+    })
+    .eq('id', sectionId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteTrainingSection(sectionId: string) {
+  const { error } = await supabase
+    .from('training_module_sections')
+    .delete()
+    .eq('id', sectionId);
+
+  if (error) throw error;
+}
+
+export async function updateTrainingSectionSortOrder(
+  sectionId: string,
+  sortOrder: number
+) {
+  const { data, error } = await supabase
+    .from('training_module_sections')
+    .update({ sort_order: sortOrder })
+    .eq('id', sectionId)
     .select()
     .single();
 
