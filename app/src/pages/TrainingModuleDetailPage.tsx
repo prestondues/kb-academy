@@ -112,8 +112,13 @@ function TrainingModuleDetailPage() {
 
   if (!module) {
     return (
-      <PageContainer title="Module not found" subtitle="No training module matched this route.">
-        <ContentCard title="Missing Module">This training module could not be found.</ContentCard>
+      <PageContainer
+        title="Module not found"
+        subtitle="No training module matched this route."
+      >
+        <ContentCard title="Missing Module">
+          This training module could not be found.
+        </ContentCard>
       </PageContainer>
     );
   }
@@ -123,9 +128,20 @@ function TrainingModuleDetailPage() {
       title={module.title}
       subtitle={`${module.moduleType} • ${module.department}`}
       actions={
-        <Link to={`/training/${module.id}/sections/new`} style={{ textDecoration: 'none' }}>
-          <PrimaryButton>Add Section</PrimaryButton>
-        </Link>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <Link
+            to={`/training/${module.id}/start`}
+            style={{ textDecoration: 'none' }}
+          >
+            <PrimaryButton>Start Session</PrimaryButton>
+          </Link>
+          <Link
+            to={`/training/${module.id}/sections/new`}
+            style={{ textDecoration: 'none' }}
+          >
+            <PrimaryButton>Add Section</PrimaryButton>
+          </Link>
+        </div>
       }
     >
       <div
@@ -159,8 +175,12 @@ function TrainingModuleDetailPage() {
         >
           <div style={{ display: 'grid', gap: '16px' }}>
             <div>
-              <div style={{ fontWeight: 800, marginBottom: '6px' }}>Description</div>
-              <div style={{ color: '#5f6b76', lineHeight: 1.6 }}>{module.description}</div>
+              <div style={{ fontWeight: 800, marginBottom: '6px' }}>
+                Description
+              </div>
+              <div style={{ color: '#5f6b76', lineHeight: 1.6 }}>
+                {module.description}
+              </div>
             </div>
 
             <div style={rowStyle}>
@@ -198,7 +218,11 @@ function TrainingModuleDetailPage() {
                 variant={module.requiresQuiz ? 'info' : 'warning'}
               />
               <StatusBadge
-                label={module.allergenFlag ? 'Allergen Flag On' : 'No Allergen Flag'}
+                label={
+                  module.allergenFlag
+                    ? 'Allergen Flag On'
+                    : 'No Allergen Flag'
+                }
                 variant={module.allergenFlag ? 'warning' : 'success'}
               />
             </div>
@@ -206,7 +230,8 @@ function TrainingModuleDetailPage() {
 
           <ContentCard title="Section Summary">
             <div style={{ color: '#5f6b76', lineHeight: 1.6 }}>
-              {sections.length} section{sections.length === 1 ? '' : 's'} currently configured.
+              {sections.length} section{sections.length === 1 ? '' : 's'} currently
+              configured.
             </div>
             <div style={{ marginTop: '10px', fontSize: '13px', color: '#5f6b76' }}>
               Drag and drop sections to reorder them.

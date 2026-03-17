@@ -1,6 +1,10 @@
 import { supabase } from '../../lib/supabase';
 import type { TrainingModuleRecord } from './types';
 import type { TrainingSectionRecord } from './sectionTypes';
+import type {
+  TrainingSessionProgressRecord,
+  TrainingSessionRecord,
+} from './sessionTypes';
 
 type SelectOption = {
   id: string;
@@ -66,6 +70,27 @@ export async function getTrainingDepartments(): Promise<SelectOption[]> {
 
   if (error) throw error;
   return (data ?? []) as SelectOption[];
+}
+
+export async function getUserOptions(): Promise<SelectOption[]> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, first_name, last_name')
+    .eq('is_active', true)
+    .order('last_name', { ascending: true });
+
+  if (error) throw error;
+
+  type UserOptionRow = {
+  id: string;
+  first_name: string;
+  last_name: string;
+};
+
+return ((data ?? []) as UserOptionRow[]).map((profile) => ({
+  id: profile.id,
+  name: `${profile.first_name} ${profile.last_name}`,
+}));
 }
 
 type CreateTrainingModuleInput = {
@@ -262,6 +287,119 @@ export async function updateTrainingSectionSortOrder(
     .from('training_module_sections')
     .update({ sort_order: sortOrder })
     .eq('id', sectionId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+type CreateTrainingSessionInput = {
+  module_id: string;
+  trainee_id: string;
+  trainer_id: string;
+};
+
+export async function createTrainingSession(input: CreateTrainingSessionInput) {
+  const { data, error } = await supabase
+    .from('training_sessions')
+    .insert({
+      module_id: input.module_id,
+      trainee_id: input.trainee_id,
+      trainer_id: input.trainer_id,
+      session_status: 'in_progress',
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  const session = data as TrainingSessionRecord;
+
+  const sections = await getTrainingSections(input.module_id);
+
+  if (sections.length > 0) {
+    const { error: progressError } = await supabase
+      .from('training_session_section_progress')
+      .insert(
+        sections.map((section) => ({
+          session_id: session.id,
+          section_id: section.id,
+          is_completed: false,
+        }))
+      );
+
+    if (progressError) throw progressError;
+  }
+
+  return session;
+}
+
+export async function getTrainingSessionById(
+  sessionId: string
+): Promise<TrainingSessionRecord | null> {
+  const { data, error } = await supabase
+    .from('training_sessions')
+    .select(`
+      id,
+      module_id,
+      trainee_id,
+      trainer_id,
+      session_status,
+      started_at,
+      completed_at
+    `)
+    .eq('id', sessionId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return (data ?? null) as unknown as TrainingSessionRecord | null;
+}
+
+export async function getTrainingSessionProgress(
+  sessionId: string
+): Promise<TrainingSessionProgressRecord[]> {
+  const { data, error } = await supabase
+    .from('training_session_section_progress')
+    .select(`
+      id,
+      session_id,
+      section_id,
+      is_completed,
+      completed_at
+    `)
+    .eq('session_id', sessionId);
+
+  if (error) throw error;
+  return (data ?? []) as unknown as TrainingSessionProgressRecord[];
+}
+
+export async function markTrainingSessionSectionComplete(
+  progressId: string,
+  isCompleted: boolean
+) {
+  const { data, error } = await supabase
+    .from('training_session_section_progress')
+    .update({
+      is_completed: isCompleted,
+      completed_at: isCompleted ? new Date().toISOString() : null,
+    })
+    .eq('id', progressId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function completeTrainingSession(sessionId: string) {
+  const { data, error } = await supabase
+    .from('training_sessions')
+    .update({
+      session_status: 'completed',
+      completed_at: new Date().toISOString(),
+    })
+    .eq('id', sessionId)
     .select()
     .single();
 
