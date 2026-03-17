@@ -5,6 +5,7 @@ import type {
   TrainingSessionProgressRecord,
   TrainingSessionRecord,
 } from './sessionTypes';
+import type { TrainingSessionSignoffRecord } from './signoffTypes';
 
 type SelectOption = {
   id: string;
@@ -452,4 +453,41 @@ export async function getCompletedTrainingSessions(): Promise<TrainingSessionRec
 
   if (error) throw error;
   return (data ?? []) as unknown as TrainingSessionRecord[];
+}
+
+export async function getTrainingSessionSignoffs(
+  sessionId: string
+): Promise<TrainingSessionSignoffRecord[]> {
+  const { data, error } = await supabase
+    .from('training_session_signoffs')
+    .select(`
+      id,
+      session_id,
+      signer_id,
+      signer_role,
+      signed_at
+    `)
+    .eq('session_id', sessionId);
+
+  if (error) throw error;
+  return (data ?? []) as unknown as TrainingSessionSignoffRecord[];
+}
+
+export async function createTrainingSessionSignoff(input: {
+  session_id: string;
+  signer_id: string;
+  signer_role: 'trainer' | 'trainee';
+}) {
+  const { data, error } = await supabase
+    .from('training_session_signoffs')
+    .insert({
+      session_id: input.session_id,
+      signer_id: input.signer_id,
+      signer_role: input.signer_role,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
 }
