@@ -8,6 +8,9 @@ export type TrainingSessionRecord = {
   session_status: TrainingSessionStatus;
   started_at?: string | null;
   completed_at?: string | null;
+  module?: { title?: string | null } | null;
+  trainee?: { first_name?: string | null; last_name?: string | null } | null;
+  trainer?: { first_name?: string | null; last_name?: string | null } | null;
 };
 
 export type TrainingSessionProgressRecord = {
@@ -21,6 +24,9 @@ export type TrainingSessionProgressRecord = {
 export type TrainingSessionCardModel = {
   id: string;
   status: 'In Progress' | 'Completed';
+  moduleTitle: string;
+  traineeName: string;
+  trainerName: string;
   startedAt: string;
   completedAt: string;
 };

@@ -82,15 +82,15 @@ export async function getUserOptions(): Promise<SelectOption[]> {
   if (error) throw error;
 
   type UserOptionRow = {
-  id: string;
-  first_name: string;
-  last_name: string;
-};
+    id: string;
+    first_name: string;
+    last_name: string;
+  };
 
-return ((data ?? []) as UserOptionRow[]).map((profile) => ({
-  id: profile.id,
-  name: `${profile.first_name} ${profile.last_name}`,
-}));
+  return ((data ?? []) as UserOptionRow[]).map((profile) => ({
+    id: profile.id,
+    name: `${profile.first_name} ${profile.last_name}`,
+  }));
 }
 
 type CreateTrainingModuleInput = {
@@ -315,7 +315,6 @@ export async function createTrainingSession(input: CreateTrainingSessionInput) {
   if (error) throw error;
 
   const session = data as TrainingSessionRecord;
-
   const sections = await getTrainingSections(input.module_id);
 
   if (sections.length > 0) {
@@ -347,7 +346,10 @@ export async function getTrainingSessionById(
       trainer_id,
       session_status,
       started_at,
-      completed_at
+      completed_at,
+      module:training_modules!training_sessions_module_id_fkey(title),
+      trainee:profiles!training_sessions_trainee_id_fkey(first_name, last_name),
+      trainer:profiles!training_sessions_trainer_id_fkey(first_name, last_name)
     `)
     .eq('id', sessionId)
     .maybeSingle();
@@ -405,4 +407,49 @@ export async function completeTrainingSession(sessionId: string) {
 
   if (error) throw error;
   return data;
+}
+
+export async function getInProgressTrainingSessions(): Promise<TrainingSessionRecord[]> {
+  const { data, error } = await supabase
+    .from('training_sessions')
+    .select(`
+      id,
+      module_id,
+      trainee_id,
+      trainer_id,
+      session_status,
+      started_at,
+      completed_at,
+      module:training_modules!training_sessions_module_id_fkey(title),
+      trainee:profiles!training_sessions_trainee_id_fkey(first_name, last_name),
+      trainer:profiles!training_sessions_trainer_id_fkey(first_name, last_name)
+    `)
+    .eq('session_status', 'in_progress')
+    .order('started_at', { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []) as unknown as TrainingSessionRecord[];
+}
+
+export async function getCompletedTrainingSessions(): Promise<TrainingSessionRecord[]> {
+  const { data, error } = await supabase
+    .from('training_sessions')
+    .select(`
+      id,
+      module_id,
+      trainee_id,
+      trainer_id,
+      session_status,
+      started_at,
+      completed_at,
+      module:training_modules!training_sessions_module_id_fkey(title),
+      trainee:profiles!training_sessions_trainee_id_fkey(first_name, last_name),
+      trainer:profiles!training_sessions_trainer_id_fkey(first_name, last_name)
+    `)
+    .eq('session_status', 'completed')
+    .order('completed_at', { ascending: false })
+    .limit(8);
+
+  if (error) throw error;
+  return (data ?? []) as unknown as TrainingSessionRecord[];
 }

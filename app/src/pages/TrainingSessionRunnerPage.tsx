@@ -79,9 +79,13 @@ function TrainingSessionRunnerPage() {
     [sections]
   );
 
-  const allRequiredCompleted = requiredSections.every(
+  const completedRequiredCount = requiredSections.filter(
     (section) => progressMap[section.id]?.isCompleted
-  );
+  ).length;
+
+  const allRequiredCompleted =
+    requiredSections.length > 0 &&
+    requiredSections.every((section) => progressMap[section.id]?.isCompleted);
 
   async function toggleSection(sectionId: string, checked: boolean) {
     const progress = progressMap[sectionId];
@@ -122,6 +126,10 @@ function TrainingSessionRunnerPage() {
     }
   }
 
+  function handleSaveAndFinishLater() {
+    navigate('/training');
+  }
+
   if (loading) {
     return (
       <PageContainer title="Loading session..." subtitle="Please wait.">
@@ -135,14 +143,59 @@ function TrainingSessionRunnerPage() {
       title={moduleTitle}
       subtitle="Run the module, track section completion, and resume as needed."
       actions={
-        <PrimaryButton
-          onClick={handleCompleteSession}
-          disabled={!allRequiredCompleted || completingSession}
-        >
-          {completingSession ? 'Completing...' : 'Complete Session'}
-        </PrimaryButton>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            type="button"
+            onClick={handleSaveAndFinishLater}
+            style={secondaryButtonStyle}
+          >
+            Save & Finish Later
+          </button>
+
+          <PrimaryButton
+            onClick={handleCompleteSession}
+            disabled={!allRequiredCompleted || completingSession}
+          >
+            {completingSession ? 'Completing...' : 'Complete Session'}
+          </PrimaryButton>
+        </div>
       }
     >
+      <div
+        style={{
+          marginBottom: '16px',
+          padding: '16px 18px',
+          border: '1px solid #dbe4ee',
+          borderRadius: '16px',
+          background: '#ffffff',
+          display: 'flex',
+          justifyContent: 'space-between',
+          gap: '16px',
+          alignItems: 'center',
+        }}
+      >
+        <div>
+          <div style={{ fontWeight: 800, fontSize: '16px' }}>Required Progress</div>
+          <div style={{ marginTop: '6px', color: '#5f6b76', fontSize: '14px' }}>
+            {completedRequiredCount} of {requiredSections.length} required sections complete
+          </div>
+        </div>
+
+        <div
+          style={{
+            padding: '10px 14px',
+            borderRadius: '999px',
+            background: allRequiredCompleted ? '#e8f7ee' : '#f7f9fc',
+            color: allRequiredCompleted ? '#18794e' : '#5f6b76',
+            fontWeight: 800,
+            fontSize: '13px',
+            opacity: allRequiredCompleted ? 1 : 0.8,
+          }}
+        >
+          {allRequiredCompleted ? 'Ready to Complete' : 'Completion Locked'}
+        </div>
+      </div>
+
       <ContentCard
         title="Session Progress"
         subtitle="Mark each section complete as the trainer and trainee work through the module."
@@ -178,6 +231,7 @@ function TrainingSessionRunnerPage() {
                     </div>
                     <div style={{ marginTop: '6px', color: '#5f6b76', fontSize: '14px' }}>
                       {section.section_type}
+                      {section.is_required ? ' • required' : ' • optional'}
                     </div>
                   </div>
 
@@ -208,5 +262,14 @@ function TrainingSessionRunnerPage() {
     </PageContainer>
   );
 }
+
+const secondaryButtonStyle: React.CSSProperties = {
+  border: '1px solid #dbe4ee',
+  background: '#ffffff',
+  borderRadius: '14px',
+  padding: '12px 14px',
+  fontWeight: 700,
+  cursor: 'pointer',
+};
 
 export default TrainingSessionRunnerPage;

@@ -2,14 +2,23 @@ import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import PageContainer from '../components/PageContainer';
 import PrimaryButton from '../components/PrimaryButton';
-import { getTrainingModules } from '../features/training/trainingApi';
+import StatusBadge from '../components/StatusBadge';
+import {
+  getCompletedTrainingSessions,
+  getInProgressTrainingSessions,
+  getTrainingModules,
+} from '../features/training/trainingApi';
 import { mapTrainingModuleToCard } from '../features/training/trainingMappers';
+import { mapTrainingSessionToCard } from '../features/training/sessionMappers';
 import type { TrainingModuleCardModel } from '../features/training/types';
+import type { TrainingSessionCardModel } from '../features/training/sessionTypes';
 import TrainingModuleCard from '../features/training/TrainingModuleCard';
 import { theme } from '../styles/theme';
 
 function TrainingPage() {
   const [modules, setModules] = useState<TrainingModuleCardModel[]>([]);
+  const [inProgressSessions, setInProgressSessions] = useState<TrainingSessionCardModel[]>([]);
+  const [completedSessions, setCompletedSessions] = useState<TrainingSessionCardModel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -19,20 +28,27 @@ function TrainingPage() {
   const [statusFilter, setStatusFilter] = useState('All');
 
   useEffect(() => {
-    async function loadModules() {
+    async function loadTrainingData() {
       try {
-        const data = await getTrainingModules();
-        setModules(data.map(mapTrainingModuleToCard));
+        const [moduleData, inProgressData, completedData] = await Promise.all([
+          getTrainingModules(),
+          getInProgressTrainingSessions(),
+          getCompletedTrainingSessions(),
+        ]);
+
+        setModules(moduleData.map(mapTrainingModuleToCard));
+        setInProgressSessions(inProgressData.map(mapTrainingSessionToCard));
+        setCompletedSessions(completedData.map(mapTrainingSessionToCard));
       } catch (err: unknown) {
         const message =
-          err instanceof Error ? err.message : 'Failed to load training modules.';
+          err instanceof Error ? err.message : 'Failed to load training data.';
         setError(message);
       } finally {
         setLoading(false);
       }
     }
 
-    loadModules();
+    loadTrainingData();
   }, []);
 
   const typeOptions = useMemo(
@@ -66,56 +82,122 @@ function TrainingPage() {
     });
   }, [modules, search, typeFilter, departmentFilter, statusFilter]);
 
+  const resumePreview = inProgressSessions.slice(0, 2);
+  const completedPreview = completedSessions.slice(0, 2);
+
   return (
     <PageContainer
       title="Training"
-      subtitle="Manage KB Academy training modules, settings, and readiness."
+      subtitle="Manage modules and resume active training sessions."
       actions={
         <Link to="/training/new" style={{ textDecoration: 'none' }}>
           <PrimaryButton>Create Module</PrimaryButton>
         </Link>
       }
     >
-      <div style={toolbarStyle}>
+      <div style={activityShellStyle}>
+        <div style={activityHeaderStyle}>
+          <div>
+            <div style={activityEyebrowStyle}>Session Activity</div>
+            <h2 style={activityHeadingStyle}>Resume and recent history</h2>
+          </div>
+
+          <div style={activityStatsWrapStyle}>
+            <StatPill label="In Progress" value={String(inProgressSessions.length)} />
+            <StatPill label="Completed" value={String(completedSessions.length)} />
+          </div>
+        </div>
+
+        <div style={activityGridStyle}>
+          <div>
+            <div style={columnTitleStyle}>Resume Training</div>
+            {resumePreview.length === 0 ? (
+              <div style={activityEmptyStyle}>No sessions waiting to be resumed.</div>
+            ) : (
+              <div style={{ display: 'grid', gap: '10px' }}>
+                {resumePreview.map((session) => (
+                  <SlimSessionRow
+                    key={session.id}
+                    session={session}
+                    actionLabel="Resume"
+                    actionTo={`/training/sessions/${session.id}`}
+                    showCompletedDate={false}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <div style={columnTitleStyle}>Recent Completions</div>
+            {completedPreview.length === 0 ? (
+              <div style={activityEmptyStyle}>No recent completed sessions.</div>
+            ) : (
+              <div style={{ display: 'grid', gap: '10px' }}>
+                {completedPreview.map((session) => (
+                  <SlimSessionRow
+                    key={session.id}
+                    session={session}
+                    actionLabel="View"
+                    actionTo={`/training/sessions/${session.id}`}
+                    showCompletedDate
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div style={toolbarShellStyle}>
         <div style={searchWrapStyle}>
           <span style={searchIconStyle}>⌕</span>
           <input
             style={searchInputStyle}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search modules by title, description, department, or SQF"
+            placeholder="Search modules by title, department, or SQF"
           />
         </div>
 
-        <div style={countPillStyle}>
-          {filteredModules.length} module{filteredModules.length === 1 ? '' : 's'}
+        <div style={filterRowStyle}>
+          <FilterSelect
+            value={typeFilter}
+            onChange={setTypeFilter}
+            options={typeOptions}
+            label="Type"
+          />
+          <FilterSelect
+            value={departmentFilter}
+            onChange={setDepartmentFilter}
+            options={departmentOptions}
+            label="Department"
+          />
+          <FilterSelect
+            value={statusFilter}
+            onChange={setStatusFilter}
+            options={['All', 'Active', 'Inactive']}
+            label="Status"
+          />
+          <div style={moduleCountWrapStyle}>
+            <span style={moduleCountLabelStyle}>Showing</span>
+            <div style={moduleCountValueStyle}>
+              {filteredModules.length} module{filteredModules.length === 1 ? '' : 's'}
+            </div>
+          </div>
         </div>
       </div>
 
-      <div style={filtersRowStyle}>
-        <FilterSelect
-          label="Type"
-          value={typeFilter}
-          onChange={setTypeFilter}
-          options={typeOptions}
-        />
-        <FilterSelect
-          label="Department"
-          value={departmentFilter}
-          onChange={setDepartmentFilter}
-          options={departmentOptions}
-        />
-        <FilterSelect
-          label="Status"
-          value={statusFilter}
-          onChange={setStatusFilter}
-          options={['All', 'Active', 'Inactive']}
-        />
+      <div style={libraryHeaderStyle}>
+        <div>
+          <div style={libraryEyebrowStyle}>Module Library</div>
+          <h2 style={libraryHeadingStyle}>Training Modules</h2>
+        </div>
       </div>
 
-      <div style={gridStyle}>
+      <div style={moduleGridStyle}>
         {loading ? (
-          <div style={stateStyle}>Loading training modules...</div>
+          <div style={stateStyle}>Loading training data...</div>
         ) : error ? (
           <div style={stateStyle}>{error}</div>
         ) : filteredModules.length === 0 ? (
@@ -124,7 +206,7 @@ function TrainingPage() {
               No training modules found
             </div>
             <div style={{ color: theme.colors.mutedText, lineHeight: 1.6 }}>
-              Try changing the filters or create your first module.
+              Try adjusting your search or filters.
             </div>
           </div>
         ) : (
@@ -138,15 +220,15 @@ function TrainingPage() {
 }
 
 function FilterSelect({
-  label,
   value,
   onChange,
   options,
+  label,
 }: {
-  label: string;
   value: string;
   onChange: (value: string) => void;
   options: string[];
+  label: string;
 }) {
   return (
     <div>
@@ -166,24 +248,151 @@ function FilterSelect({
   );
 }
 
-const toolbarStyle: CSSProperties = {
+function StatPill({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={statPillStyle}>
+      <span style={statPillLabelStyle}>{label}</span>
+      <span style={statPillValueStyle}>{value}</span>
+    </div>
+  );
+}
+
+function SlimSessionRow({
+  session,
+  actionLabel,
+  actionTo,
+  showCompletedDate,
+}: {
+  session: TrainingSessionCardModel;
+  actionLabel: string;
+  actionTo: string;
+  showCompletedDate?: boolean;
+}) {
+  return (
+    <div style={sessionRowStyle}>
+      <div style={{ minWidth: 0 }}>
+        <div style={sessionTitleStyle}>{session.moduleTitle}</div>
+        <div style={sessionMetaStyle}>{session.traineeName}</div>
+        <div style={sessionSubMetaStyle}>
+          {showCompletedDate ? `Completed ${session.completedAt}` : `Started ${session.startedAt}`}
+        </div>
+      </div>
+
+      <div style={sessionRightStyle}>
+        <StatusBadge
+          label={session.status}
+          variant={session.status === 'Completed' ? 'success' : 'info'}
+        />
+        <Link to={actionTo} style={{ textDecoration: 'none' }}>
+          <button type="button" style={miniActionStyle}>
+            {actionLabel}
+          </button>
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+const activityShellStyle: CSSProperties = {
+  background: '#ffffff',
+  border: `1px solid ${theme.colors.border}`,
+  borderRadius: '22px',
+  padding: '20px',
+  marginBottom: '18px',
+  boxShadow: '0 10px 30px rgba(8, 31, 45, 0.04)',
+};
+
+const activityHeaderStyle: CSSProperties = {
   display: 'flex',
   justifyContent: 'space-between',
-  alignItems: 'center',
+  alignItems: 'flex-start',
   gap: '16px',
-  marginBottom: '16px',
+  marginBottom: '18px',
   flexWrap: 'wrap',
+};
+
+const activityEyebrowStyle: CSSProperties = {
+  fontSize: '12px',
+  fontWeight: 700,
+  textTransform: 'uppercase',
+  letterSpacing: '0.05em',
+  color: theme.colors.mutedText,
+  marginBottom: '4px',
+};
+
+const activityHeadingStyle: CSSProperties = {
+  margin: 0,
+  fontSize: '22px',
+  fontWeight: 800,
+  color: theme.colors.text,
+};
+
+const activityStatsWrapStyle: CSSProperties = {
+  display: 'flex',
+  gap: '10px',
+  flexWrap: 'wrap',
+};
+
+const statPillStyle: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '8px',
+  padding: '10px 14px',
+  borderRadius: '999px',
+  background: theme.colors.infoBg,
+  color: theme.colors.infoText,
+  fontWeight: 700,
+};
+
+const statPillLabelStyle: CSSProperties = {
+  fontSize: '12px',
+  opacity: 0.9,
+};
+
+const statPillValueStyle: CSSProperties = {
+  fontSize: '14px',
+  fontWeight: 800,
+};
+
+const activityGridStyle: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '1fr 1fr',
+  gap: '18px',
+};
+
+const columnTitleStyle: CSSProperties = {
+  fontSize: '13px',
+  fontWeight: 800,
+  textTransform: 'uppercase',
+  letterSpacing: '0.04em',
+  color: theme.colors.mutedText,
+  marginBottom: '10px',
+};
+
+const activityEmptyStyle: CSSProperties = {
+  color: theme.colors.mutedText,
+  fontSize: '14px',
+  lineHeight: 1.6,
+  padding: '8px 0',
+};
+
+const toolbarShellStyle: CSSProperties = {
+  background: '#ffffff',
+  border: `1px solid ${theme.colors.border}`,
+  borderRadius: '22px',
+  padding: '18px',
+  marginBottom: '18px',
+  boxShadow: '0 10px 30px rgba(8, 31, 45, 0.04)',
 };
 
 const searchWrapStyle: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
-  minWidth: '420px',
-  flex: 1,
   border: `1px solid ${theme.colors.border}`,
   borderRadius: '16px',
   background: '#ffffff',
   overflow: 'hidden',
+  marginBottom: '14px',
 };
 
 const searchIconStyle: CSSProperties = {
@@ -202,22 +411,11 @@ const searchInputStyle: CSSProperties = {
   background: 'transparent',
 };
 
-const countPillStyle: CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  padding: '10px 14px',
-  borderRadius: '999px',
-  background: theme.colors.infoBg,
-  color: theme.colors.infoText,
-  fontSize: '13px',
-  fontWeight: 800,
-};
-
-const filtersRowStyle: CSSProperties = {
+const filterRowStyle: CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+  gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
   gap: '12px',
-  marginBottom: '18px',
+  alignItems: 'end',
 };
 
 const filterLabelStyle: CSSProperties = {
@@ -239,7 +437,91 @@ const filterInputStyle: CSSProperties = {
   background: '#ffffff',
 };
 
-const gridStyle: CSSProperties = {
+const moduleCountWrapStyle: CSSProperties = {
+  padding: '10px 14px',
+  border: `1px solid ${theme.colors.border}`,
+  borderRadius: '14px',
+  background: '#f7f9fc',
+};
+
+const moduleCountLabelStyle: CSSProperties = {
+  display: 'block',
+  fontSize: '12px',
+  color: theme.colors.mutedText,
+  marginBottom: '4px',
+};
+
+const moduleCountValueStyle: CSSProperties = {
+  fontSize: '14px',
+  fontWeight: 800,
+  color: theme.colors.text,
+};
+
+const libraryHeaderStyle: CSSProperties = {
+  marginBottom: '12px',
+};
+
+const libraryEyebrowStyle: CSSProperties = {
+  fontSize: '12px',
+  fontWeight: 700,
+  textTransform: 'uppercase',
+  letterSpacing: '0.05em',
+  color: theme.colors.mutedText,
+  marginBottom: '4px',
+};
+
+const libraryHeadingStyle: CSSProperties = {
+  margin: 0,
+  fontSize: '22px',
+  fontWeight: 800,
+  color: theme.colors.text,
+};
+
+const sessionRowStyle: CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  gap: '12px',
+  alignItems: 'center',
+  padding: '12px 0',
+  borderBottom: `1px solid ${theme.colors.border}`,
+};
+
+const sessionTitleStyle: CSSProperties = {
+  fontWeight: 800,
+  fontSize: '15px',
+  marginBottom: '4px',
+};
+
+const sessionMetaStyle: CSSProperties = {
+  color: theme.colors.text,
+  fontSize: '13px',
+  lineHeight: 1.45,
+};
+
+const sessionSubMetaStyle: CSSProperties = {
+  color: theme.colors.mutedText,
+  fontSize: '13px',
+  lineHeight: 1.45,
+  marginTop: '2px',
+};
+
+const sessionRightStyle: CSSProperties = {
+  display: 'grid',
+  gap: '8px',
+  justifyItems: 'end',
+  flexShrink: 0,
+};
+
+const miniActionStyle: CSSProperties = {
+  border: `1px solid ${theme.colors.border}`,
+  background: '#ffffff',
+  borderRadius: '12px',
+  padding: '8px 12px',
+  fontWeight: 700,
+  cursor: 'pointer',
+};
+
+const moduleGridStyle: CSSProperties = {
   display: 'grid',
   gap: '12px',
 };
