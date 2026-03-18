@@ -130,10 +130,10 @@ function TrainingModuleDetailPage() {
       actions={
         <div style={{ display: 'flex', gap: '10px' }}>
           <Link
-            to={`/training/${module.id}/start`}
+            to={`/training/conduct?moduleId=${module.id}`}
             style={{ textDecoration: 'none' }}
           >
-            <PrimaryButton>Start Session</PrimaryButton>
+            <PrimaryButton>Conduct Training</PrimaryButton>
           </Link>
           <Link
             to={`/training/${module.id}/sections/new`}

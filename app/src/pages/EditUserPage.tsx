@@ -1,10 +1,13 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import ContentCard from '../components/ContentCard';
 import PageContainer from '../components/PageContainer';
 import PrimaryButton from '../components/PrimaryButton';
-import { supabase } from '../lib/supabase';
-import { getRoleOptions } from '../features/users/usersApi';
+import {
+  getRoleOptions,
+  getUserById,
+  updateUser,
+} from '../features/users/usersApi';
 import { theme } from '../styles/theme';
 
 type SelectOption = {
@@ -12,10 +15,12 @@ type SelectOption = {
   name: string;
 };
 
-function CreateUserPage() {
+function EditUserPage() {
+  const { userId } = useParams();
   const navigate = useNavigate();
 
   const [roles, setRoles] = useState<SelectOption[]>([]);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState({
@@ -24,63 +29,93 @@ function CreateUserPage() {
     username: '',
     employee_id: '',
     email: '',
-    password: '',
     role_id: '',
     probationary: false,
     trainer_enabled: false,
+    is_active: true,
   });
 
   useEffect(() => {
-    async function loadOptions() {
+    async function loadData() {
+      if (!userId) return;
+
       try {
-        const roleData = await getRoleOptions();
+        const [user, roleData] = await Promise.all([
+          getUserById(userId),
+          getRoleOptions(),
+        ]);
+
         setRoles(roleData as SelectOption[]);
+
+        if (user) {
+          setForm({
+            first_name: user.first_name ?? '',
+            last_name: user.last_name ?? '',
+            username: user.username ?? '',
+            employee_id: user.employee_id ?? '',
+            email: user.email ?? '',
+            role_id: user.role_id ?? '',
+            probationary: Boolean(user.probationary),
+            trainer_enabled: Boolean(user.trainer_enabled),
+            is_active: Boolean(user.is_active),
+          });
+        }
       } catch (error) {
-        console.error('LOAD CREATE USER OPTIONS ERROR:', error);
+        console.error('LOAD EDIT USER ERROR:', error);
+      } finally {
+        setLoading(false);
       }
     }
 
-    loadOptions();
-  }, []);
+    loadData();
+  }, [userId]);
 
-  async function handleSubmit() {
+  async function handleSave() {
+    if (!userId) return;
+
     try {
       setSaving(true);
 
-      const { error } = await supabase.functions.invoke('create-user', {
-        body: {
-          first_name: form.first_name,
-          last_name: form.last_name,
-          username: form.username,
-          employee_id: form.employee_id || null,
-          email: form.email,
-          password: form.password,
-          role_id: form.role_id || null,
-          probationary: form.probationary,
-          trainer_enabled: form.trainer_enabled,
-        },
+      await updateUser(userId, {
+        first_name: form.first_name,
+        last_name: form.last_name,
+        username: form.username,
+        employee_id: form.employee_id || null,
+        email: form.email || null,
+        role_id: form.role_id || null,
+        department_id: null,
+        shift_id: null,
+        probationary: form.probationary,
+        trainer_enabled: form.trainer_enabled,
+        is_active: form.is_active,
       });
 
-      if (error) throw error;
-
-      navigate('/users');
+      navigate(`/users/${userId}`);
     } catch (error: unknown) {
-      console.error('CREATE USER ERROR:', error);
+      console.error('UPDATE USER ERROR:', error);
       const message =
         error instanceof Error ? error.message : JSON.stringify(error);
-      alert(`Failed to create user: ${message}`);
+      alert(`Failed to update user: ${message}`);
     } finally {
       setSaving(false);
     }
   }
 
+  if (loading) {
+    return (
+      <PageContainer title="Loading user..." subtitle="Please wait.">
+        <ContentCard title="Loading">Fetching user data.</ContentCard>
+      </PageContainer>
+    );
+  }
+
   return (
     <PageContainer
-      title="Create User"
-      subtitle="Create a new KB Academy user account."
+      title="Edit User"
+      subtitle="Update profile details and account status."
       actions={
-        <PrimaryButton onClick={handleSubmit} disabled={saving}>
-          {saving ? 'Creating...' : 'Create User'}
+        <PrimaryButton onClick={handleSave} disabled={saving}>
+          {saving ? 'Saving...' : 'Save Changes'}
         </PrimaryButton>
       }
     >
@@ -126,19 +161,10 @@ function CreateUserPage() {
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
               />
             </Field>
-
-            <Field label="Temporary Password">
-              <input
-                type="password"
-                style={inputStyle}
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-              />
-            </Field>
           </div>
         </ContentCard>
 
-        <ContentCard title="Role Assignment" subtitle="Account role and training flags.">
+        <ContentCard title="Role & Flags" subtitle="Account role and training settings.">
           <div style={gridTwoStyle}>
             <Field label="Role">
               <select
@@ -159,6 +185,11 @@ function CreateUserPage() {
           </div>
 
           <div style={{ display: 'grid', gap: '12px', marginTop: '16px' }}>
+            <ToggleRow
+              label="Active User"
+              checked={form.is_active}
+              onChange={(checked) => setForm({ ...form, is_active: checked })}
+            />
             <ToggleRow
               label="Probationary"
               checked={form.probationary}
@@ -245,4 +276,4 @@ const toggleStyle: CSSProperties = {
   fontWeight: 700,
 };
 
-export default CreateUserPage;
+export default EditUserPage;

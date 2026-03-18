@@ -3,15 +3,19 @@ import { useNavigate, useParams } from 'react-router-dom';
 import ContentCard from '../components/ContentCard';
 import PageContainer from '../components/PageContainer';
 import PrimaryButton from '../components/PrimaryButton';
+import SignoffModal from '../components/SignoffModal';
 import {
   completeTrainingSession,
   createTrainingSessionSignoff,
+  getProfilePinStatus,
   getTrainingModuleById,
   getTrainingSessionById,
   getTrainingSessionProgress,
   getTrainingSessionSignoffs,
   getTrainingSections,
   markTrainingSessionSectionComplete,
+  setProfilePin,
+  verifyProfilePin,
 } from '../features/training/trainingApi';
 import type { TrainingSectionRecord } from '../features/training/sectionTypes';
 import { useAuth } from '../features/auth/useAuth';
@@ -24,10 +28,13 @@ type ProgressMap = Record<
   }
 >;
 
+type SignoffTarget = 'trainer' | 'trainee' | null;
+type ModalMode = 'verify' | 'create';
+
 function TrainingSessionRunnerPage() {
   const { sessionId } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
 
   const [moduleTitle, setModuleTitle] = useState('Training Session');
   const [sections, setSections] = useState<TrainingSectionRecord[]>([]);
@@ -37,10 +44,18 @@ function TrainingSessionRunnerPage() {
   const [sessionMeta, setSessionMeta] = useState<{
     traineeId: string;
     trainerId: string;
+    traineeName: string;
+    trainerName: string;
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingSectionId, setSavingSectionId] = useState<string | null>(null);
   const [completingSession, setCompletingSession] = useState(false);
+
+  const [signoffModalOpen, setSignoffModalOpen] = useState(false);
+  const [signoffTarget, setSignoffTarget] = useState<SignoffTarget>(null);
+  const [signoffMode, setSignoffMode] = useState<ModalMode>('verify');
+  const [signoffLoading, setSignoffLoading] = useState(false);
+  const [signoffError, setSignoffError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadData() {
@@ -56,6 +71,12 @@ function TrainingSessionRunnerPage() {
         setSessionMeta({
           traineeId: session.trainee_id,
           trainerId: session.trainer_id,
+          traineeName:
+            `${session.trainee?.first_name ?? ''} ${session.trainee?.last_name ?? ''}`.trim() ||
+            'Unknown Trainee',
+          trainerName:
+            `${session.trainer?.first_name ?? ''} ${session.trainer?.last_name ?? ''}`.trim() ||
+            'Unknown Trainer',
         });
 
         const [moduleData, sectionData, progressData, signoffData] = await Promise.all([
@@ -107,6 +128,9 @@ function TrainingSessionRunnerPage() {
 
   const readyToFinalize = allRequiredCompleted && trainerSigned && traineeSigned;
 
+  const roleName = profile?.role?.name?.toLowerCase?.() ?? '';
+  const isAdmin = roleName.includes('admin');
+
   async function toggleSection(sectionId: string, checked: boolean) {
     const progress = progressMap[sectionId];
     if (!progress) return;
@@ -131,46 +155,113 @@ function TrainingSessionRunnerPage() {
     }
   }
 
-  async function handleTrainerSignoff() {
-    if (!sessionId || !sessionMeta?.trainerId) return;
-    if (user?.id && user.id !== sessionMeta.trainerId) {
-      alert('Only the assigned trainer can perform trainer sign-off right now.');
-      return;
+  async function openSignoffFlow(target: 'trainer' | 'trainee') {
+    if (!sessionMeta) return;
+
+    setSignoffError(null);
+
+    if (target === 'trainer') {
+      const canSignAsTrainer = user?.id === sessionMeta.trainerId || isAdmin;
+
+      if (!canSignAsTrainer) {
+        setSignoffError('Only the assigned trainer or an admin can sign as trainer.');
+        setSignoffTarget('trainer');
+        setSignoffMode('verify');
+        setSignoffModalOpen(true);
+        return;
+      }
     }
 
-    const pin = window.prompt('Enter trainer PIN to sign off:');
-    if (!pin) return;
+    const profileId = target === 'trainer' ? sessionMeta.trainerId : sessionMeta.traineeId;
 
     try {
-      await createTrainingSessionSignoff({
-        session_id: sessionId,
-        signer_id: sessionMeta.trainerId,
-        signer_role: 'trainer',
-      });
-      setTrainerSigned(true);
-    } catch (error) {
-      console.error('TRAINER SIGNOFF ERROR:', error);
-      alert('Failed to complete trainer sign-off.');
+      const pinStatus = await getProfilePinStatus(profileId);
+      setSignoffTarget(target);
+      setSignoffMode(pinStatus.hasPin ? 'verify' : 'create');
+      setSignoffModalOpen(true);
+    } catch (error: unknown) {
+      console.error('LOAD PIN STATUS ERROR:', error);
+      const message =
+        error instanceof Error ? error.message : JSON.stringify(error);
+      setSignoffError(`Failed to load PIN status: ${message}`);
+      setSignoffTarget(target);
+      setSignoffMode('verify');
+      setSignoffModalOpen(true);
     }
   }
 
-  async function handleTraineeSignoff() {
-    if (!sessionId || !sessionMeta?.traineeId) return;
+  async function completeSignoff(target: 'trainer' | 'trainee') {
+    if (!sessionId || !sessionMeta) return;
 
-    const pin = window.prompt('Enter trainee PIN to sign off:');
-    if (!pin) return;
+    const signerId = target === 'trainer' ? sessionMeta.trainerId : sessionMeta.traineeId;
+
+    await createTrainingSessionSignoff({
+      session_id: sessionId,
+      signer_id: signerId,
+      signer_role: target,
+    });
+
+    if (target === 'trainer') setTrainerSigned(true);
+    if (target === 'trainee') setTraineeSigned(true);
+
+    setSignoffModalOpen(false);
+    setSignoffTarget(null);
+    setSignoffError(null);
+  }
+
+  async function handleVerifySignoff(pin: string) {
+    if (!signoffTarget || !sessionMeta) return;
+
+    const signerId = signoffTarget === 'trainer' ? sessionMeta.trainerId : sessionMeta.traineeId;
 
     try {
-      await createTrainingSessionSignoff({
-        session_id: sessionId,
-        signer_id: sessionMeta.traineeId,
-        signer_role: 'trainee',
-      });
-      setTraineeSigned(true);
-    } catch (error) {
-      console.error('TRAINEE SIGNOFF ERROR:', error);
-      alert('Failed to complete trainee sign-off.');
+      setSignoffLoading(true);
+      setSignoffError(null);
+
+      const valid = await verifyProfilePin(signerId, pin);
+
+      if (!valid) {
+        setSignoffError(
+          signoffTarget === 'trainer'
+            ? 'Incorrect trainer PIN.'
+            : 'Incorrect trainee PIN.'
+        );
+        return;
+      }
+
+      await completeSignoff(signoffTarget);
+    } catch (error: unknown) {
+      console.error('VERIFY SIGNOFF ERROR:', error);
+      const message =
+        error instanceof Error ? error.message : JSON.stringify(error);
+      setSignoffError(`Failed to verify PIN: ${message}`);
+    } finally {
+      setSignoffLoading(false);
     }
+  }
+
+  async function handleCreatePinAndSign(pin: string) {
+    if (!signoffTarget || !sessionMeta) return;
+
+    const signerId = signoffTarget === 'trainer' ? sessionMeta.trainerId : sessionMeta.traineeId;
+
+    try {
+      setSignoffLoading(true);
+      setSignoffError(null);
+
+      await setProfilePin(signerId, pin);
+      await completeSignoff(signoffTarget);
+    } catch (error) {
+      console.error('CREATE PIN AND SIGN ERROR:', error);
+      setSignoffError('Failed to create PIN and complete sign-off.');
+    } finally {
+      setSignoffLoading(false);
+    }
+  }
+
+  function getSignerName() {
+    if (!sessionMeta || !signoffTarget) return 'Unknown Signer';
+    return signoffTarget === 'trainer' ? sessionMeta.trainerName : sessionMeta.traineeName;
   }
 
   async function handleCompleteSession() {
@@ -192,6 +283,12 @@ function TrainingSessionRunnerPage() {
     navigate('/training');
   }
 
+  function handleCloseModal() {
+    setSignoffModalOpen(false);
+    setSignoffTarget(null);
+    setSignoffError(null);
+  }
+
   if (loading) {
     return (
       <PageContainer title="Loading session..." subtitle="Please wait.">
@@ -201,159 +298,179 @@ function TrainingSessionRunnerPage() {
   }
 
   return (
-    <PageContainer
-      title={moduleTitle}
-      subtitle="Run the module, track section completion, and capture final sign-off."
-      actions={
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button
-            type="button"
-            onClick={handleSaveAndFinishLater}
-            style={secondaryButtonStyle}
-          >
-            Save & Finish Later
-          </button>
+    <>
+      <PageContainer
+        title={moduleTitle}
+        subtitle="Run the module, track section completion, and capture final sign-off."
+        actions={
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button
+              type="button"
+              onClick={handleSaveAndFinishLater}
+              style={secondaryButtonStyle}
+            >
+              Save & Finish Later
+            </button>
 
-          <PrimaryButton
-            onClick={handleCompleteSession}
-            disabled={!readyToFinalize || completingSession}
-          >
-            {completingSession ? 'Completing...' : 'Complete Session'}
-          </PrimaryButton>
-        </div>
-      }
-    >
-      <div
-        style={{
-          marginBottom: '16px',
-          padding: '16px 18px',
-          border: '1px solid #dbe4ee',
-          borderRadius: '16px',
-          background: '#ffffff',
-          display: 'flex',
-          justifyContent: 'space-between',
-          gap: '16px',
-          alignItems: 'center',
-        }}
+            <PrimaryButton
+              onClick={handleCompleteSession}
+              disabled={!readyToFinalize || completingSession}
+            >
+              {completingSession ? 'Completing...' : 'Complete Session'}
+            </PrimaryButton>
+          </div>
+        }
       >
-        <div>
-          <div style={{ fontWeight: 800, fontSize: '16px' }}>Required Progress</div>
-          <div style={{ marginTop: '6px', color: '#5f6b76', fontSize: '14px' }}>
-            {completedRequiredCount} of {requiredSections.length} required sections complete
+        <div
+          style={{
+            marginBottom: '16px',
+            padding: '16px 18px',
+            border: '1px solid #dbe4ee',
+            borderRadius: '16px',
+            background: '#ffffff',
+            display: 'flex',
+            justifyContent: 'space-between',
+            gap: '16px',
+            alignItems: 'center',
+          }}
+        >
+          <div>
+            <div style={{ fontWeight: 800, fontSize: '16px' }}>Required Progress</div>
+            <div style={{ marginTop: '6px', color: '#5f6b76', fontSize: '14px' }}>
+              {completedRequiredCount} of {requiredSections.length} required sections complete
+            </div>
+          </div>
+
+          <div
+            style={{
+              padding: '10px 14px',
+              borderRadius: '999px',
+              background: readyToFinalize ? '#e8f7ee' : '#f7f9fc',
+              color: readyToFinalize ? '#18794e' : '#5f6b76',
+              fontWeight: 800,
+              fontSize: '13px',
+              opacity: readyToFinalize ? 1 : 0.8,
+            }}
+          >
+            {readyToFinalize ? 'Ready to Complete' : 'Completion Locked'}
           </div>
         </div>
 
         <div
           style={{
-            padding: '10px 14px',
-            borderRadius: '999px',
-            background: readyToFinalize ? '#e8f7ee' : '#f7f9fc',
-            color: readyToFinalize ? '#18794e' : '#5f6b76',
-            fontWeight: 800,
-            fontSize: '13px',
-            opacity: readyToFinalize ? 1 : 0.8,
+            display: 'grid',
+            gridTemplateColumns: '1.3fr 0.8fr',
+            gap: '16px',
+            marginBottom: '16px',
           }}
         >
-          {readyToFinalize ? 'Ready to Complete' : 'Completion Locked'}
-        </div>
-      </div>
+          <ContentCard
+            title="Session Progress"
+            subtitle="Mark each section complete as the trainer and trainee work through the module."
+          >
+            <div style={{ display: 'grid', gap: '12px' }}>
+              {sections.map((section) => {
+                const progress = progressMap[section.id];
+                const checked = progress?.isCompleted ?? false;
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1.3fr 0.8fr',
-          gap: '16px',
-          marginBottom: '16px',
-        }}
-      >
-        <ContentCard
-          title="Session Progress"
-          subtitle="Mark each section complete as the trainer and trainee work through the module."
-        >
-          <div style={{ display: 'grid', gap: '12px' }}>
-            {sections.map((section) => {
-              const progress = progressMap[section.id];
-              const checked = progress?.isCompleted ?? false;
-
-              return (
-                <label
-                  key={section.id}
-                  style={{
-                    display: 'grid',
-                    gap: '8px',
-                    padding: '16px',
-                    border: '1px solid #dbe4ee',
-                    borderRadius: '16px',
-                    background: checked ? '#f7fbff' : '#ffffff',
-                  }}
-                >
-                  <div
+                return (
+                  <label
+                    key={section.id}
                     style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      gap: '16px',
-                      alignItems: 'flex-start',
+                      display: 'grid',
+                      gap: '8px',
+                      padding: '16px',
+                      border: '1px solid #dbe4ee',
+                      borderRadius: '16px',
+                      background: checked ? '#f7fbff' : '#ffffff',
                     }}
                   >
-                    <div>
-                      <div style={{ fontWeight: 800 }}>
-                        {section.sort_order}. {section.title}
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        gap: '16px',
+                        alignItems: 'flex-start',
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: 800 }}>
+                          {section.sort_order}. {section.title}
+                        </div>
+                        <div style={{ marginTop: '6px', color: '#5f6b76', fontSize: '14px' }}>
+                          {section.section_type}
+                          {section.is_required ? ' • required' : ' • optional'}
+                        </div>
                       </div>
-                      <div style={{ marginTop: '6px', color: '#5f6b76', fontSize: '14px' }}>
-                        {section.section_type}
-                        {section.is_required ? ' • required' : ' • optional'}
+
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        disabled={savingSectionId === section.id}
+                        onChange={(e) => toggleSection(section.id, e.target.checked)}
+                      />
+                    </div>
+
+                    {section.body_text ? (
+                      <div style={{ color: '#5f6b76', lineHeight: 1.6 }}>
+                        {section.body_text}
                       </div>
-                    </div>
+                    ) : null}
 
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      disabled={savingSectionId === section.id}
-                      onChange={(e) => toggleSection(section.id, e.target.checked)}
-                    />
-                  </div>
+                    {section.media_url ? (
+                      <div
+                        style={{
+                          color: '#194f91',
+                          fontSize: '13px',
+                          wordBreak: 'break-word',
+                        }}
+                      >
+                        {section.media_url}
+                      </div>
+                    ) : null}
+                  </label>
+                );
+              })}
+            </div>
+          </ContentCard>
 
-                  {section.body_text ? (
-                    <div style={{ color: '#5f6b76', lineHeight: 1.6 }}>
-                      {section.body_text}
-                    </div>
-                  ) : null}
+          <ContentCard
+            title="Final Sign-Off"
+            subtitle="Both sign-offs are required before session completion."
+          >
+            <div style={{ display: 'grid', gap: '12px' }}>
+              <SignoffRow
+                title="Trainer Sign-Off"
+                complete={trainerSigned}
+                buttonLabel={trainerSigned ? 'Signed' : 'Sign as Trainer'}
+                onClick={() => openSignoffFlow('trainer')}
+                disabled={trainerSigned || !allRequiredCompleted}
+              />
 
-                  {section.media_url ? (
-                    <div style={{ color: '#194f91', fontSize: '13px', wordBreak: 'break-word' }}>
-                      {section.media_url}
-                    </div>
-                  ) : null}
-                </label>
-              );
-            })}
-          </div>
-        </ContentCard>
+              <SignoffRow
+                title="Trainee Sign-Off"
+                complete={traineeSigned}
+                buttonLabel={traineeSigned ? 'Signed' : 'Sign as Trainee'}
+                onClick={() => openSignoffFlow('trainee')}
+                disabled={traineeSigned || !allRequiredCompleted}
+              />
+            </div>
+          </ContentCard>
+        </div>
+      </PageContainer>
 
-        <ContentCard
-          title="Final Sign-Off"
-          subtitle="Both sign-offs are required before session completion."
-        >
-          <div style={{ display: 'grid', gap: '12px' }}>
-            <SignoffRow
-              title="Trainer Sign-Off"
-              complete={trainerSigned}
-              buttonLabel={trainerSigned ? 'Signed' : 'Sign as Trainer'}
-              onClick={handleTrainerSignoff}
-              disabled={trainerSigned || !allRequiredCompleted}
-            />
-
-            <SignoffRow
-              title="Trainee Sign-Off"
-              complete={traineeSigned}
-              buttonLabel={traineeSigned ? 'Signed' : 'Sign as Trainee'}
-              onClick={handleTraineeSignoff}
-              disabled={traineeSigned || !allRequiredCompleted}
-            />
-          </div>
-        </ContentCard>
-      </div>
-    </PageContainer>
+      <SignoffModal
+        open={signoffModalOpen}
+        signerLabel={signoffTarget ?? 'trainer'}
+        signerName={getSignerName()}
+        mode={signoffMode}
+        loading={signoffLoading}
+        errorMessage={signoffError}
+        onClose={handleCloseModal}
+        onSubmitVerify={handleVerifySignoff}
+        onSubmitCreate={handleCreatePinAndSign}
+      />
+    </>
   );
 }
 

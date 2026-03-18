@@ -88,11 +88,16 @@ function TrainingPage() {
   return (
     <PageContainer
       title="Training"
-      subtitle="Manage modules and resume active training sessions."
+      subtitle="Manage modules and conduct live training sessions."
       actions={
-        <Link to="/training/new" style={{ textDecoration: 'none' }}>
-          <PrimaryButton>Create Module</PrimaryButton>
-        </Link>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <Link to="/training/conduct" style={{ textDecoration: 'none' }}>
+            <PrimaryButton>Conduct Training</PrimaryButton>
+          </Link>
+          <Link to="/training/new" style={{ textDecoration: 'none' }}>
+            <PrimaryButton>Create Module</PrimaryButton>
+          </Link>
+        </div>
       }
     >
       <div style={activityShellStyle}>

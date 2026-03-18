@@ -16,6 +16,7 @@ import DashboardPage from '../pages/DashboardPage';
 import DocumentsPage from '../pages/DocumentsPage';
 import EditTrainingModulePage from '../pages/EditTrainingModulePage';
 import EditTrainingSectionPage from '../pages/EditTrainingSectionPage';
+import EditUserPage from '../pages/EditUserPage';
 import LoginPage from '../pages/LoginPage';
 import NotFoundPage from '../pages/NotFoundPage';
 import PlaceChartsPage from '../pages/PlaceChartsPage';
@@ -75,6 +76,7 @@ export const router = createBrowserRouter([
       { index: true, element: <DashboardPage /> },
       { path: 'training', element: <TrainingPage /> },
       { path: 'training/new', element: <CreateTrainingModulePage /> },
+      { path: 'training/conduct', element: <CreateTrainingSessionPage /> },
       { path: 'training/:moduleId', element: <TrainingModuleDetailPage /> },
       { path: 'training/:moduleId/edit', element: <EditTrainingModulePage /> },
       { path: 'training/:moduleId/start', element: <CreateTrainingSessionPage /> },
@@ -86,6 +88,7 @@ export const router = createBrowserRouter([
       { path: 'users', element: <UsersPage /> },
       { path: 'users/new', element: <CreateUserPage /> },
       { path: 'users/:userId', element: <UserDetailPage /> },
+      { path: 'users/:userId/edit', element: <EditUserPage /> },
       { path: 'announcements', element: <AnnouncementsPage /> },
       { path: 'reports', element: <ReportsPage /> },
       { path: 'documents', element: <DocumentsPage /> },

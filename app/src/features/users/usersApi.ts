@@ -1,171 +1,187 @@
 import { supabase } from '../../lib/supabase';
-import type { RawProfile } from './userMappers';
 
-type SelectOption = {
+export type UserRecord = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  username: string;
+  employee_id: string | null;
+  email: string | null;
+  is_active: boolean;
+  probationary: boolean;
+  trainer_enabled: boolean;
+  role_id: string | null;
+  department_id: string | null;
+  shift_id: string | null;
+  role?: { id: string; name: string } | null;
+  department?: { id: string; name: string } | null;
+  shift?: { id: string; name: string } | null;
+};
+
+type ProfileRow = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  username: string;
+  employee_id: string | null;
+  email: string | null;
+  is_active: boolean;
+  probationary: boolean;
+  trainer_enabled: boolean;
+  role_id: string | null;
+};
+
+type LookupRow = {
   id: string;
   name: string;
 };
 
-export async function getUsers(): Promise<RawProfile[]> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select(`
-      id,
-      employee_id,
-      username,
-      first_name,
-      last_name,
-      email,
-      hire_date,
-      birthday,
-      probationary,
-      trainer_enabled,
-      is_active,
-      role:roles!profiles_role_id_fkey(name),
-      department:departments!profiles_home_department_id_fkey(name),
-      shift:shifts!profiles_home_shift_id_fkey(name)
-    `)
-    .order('last_name', { ascending: true });
+function enrichUsers(
+  profiles: ProfileRow[],
+  roles: LookupRow[]
+): UserRecord[] {
+  const roleMap = new Map(roles.map((item) => [item.id, item]));
 
-  if (error) throw error;
-  return (data ?? []) as unknown as RawProfile[];
+  return profiles.map((profile) => ({
+    ...profile,
+    department_id: null,
+    shift_id: null,
+    role: profile.role_id ? roleMap.get(profile.role_id) ?? null : null,
+    department: null,
+    shift: null,
+  }));
 }
 
-export async function getUserById(userId: string): Promise<RawProfile | null> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select(`
-      id,
-      employee_id,
-      username,
-      first_name,
-      last_name,
-      email,
-      hire_date,
-      birthday,
-      probationary,
-      trainer_enabled,
-      is_active,
-      role:roles!profiles_role_id_fkey(name),
-      department:departments!profiles_home_department_id_fkey(name),
-      shift:shifts!profiles_home_shift_id_fkey(name)
-    `)
-    .eq('id', userId)
-    .maybeSingle();
+export async function getUsers(): Promise<UserRecord[]> {
+  const [
+    { data: profiles, error: profilesError },
+    { data: roles, error: rolesError },
+  ] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select(`
+        id,
+        first_name,
+        last_name,
+        username,
+        employee_id,
+        email,
+        is_active,
+        probationary,
+        trainer_enabled,
+        role_id
+      `)
+      .order('last_name', { ascending: true }),
+    supabase.from('roles').select('id, name'),
+  ]);
 
-  if (error) throw error;
-  return (data ?? null) as unknown as RawProfile | null;
+  if (profilesError) throw profilesError;
+  if (rolesError) throw rolesError;
+
+  return enrichUsers(
+    (profiles ?? []) as ProfileRow[],
+    (roles ?? []) as LookupRow[]
+  );
 }
 
-export async function getRoles(): Promise<SelectOption[]> {
+export async function getUserById(userId: string): Promise<UserRecord | null> {
+  const [
+    { data: profile, error: profileError },
+    { data: roles, error: rolesError },
+  ] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select(`
+        id,
+        first_name,
+        last_name,
+        username,
+        employee_id,
+        email,
+        is_active,
+        probationary,
+        trainer_enabled,
+        role_id
+      `)
+      .eq('id', userId)
+      .maybeSingle(),
+    supabase.from('roles').select('id, name'),
+  ]);
+
+  if (profileError) throw profileError;
+  if (rolesError) throw rolesError;
+
+  if (!profile) return null;
+
+  return enrichUsers(
+    [profile as ProfileRow],
+    (roles ?? []) as LookupRow[]
+  )[0];
+}
+
+export async function getRoleOptions() {
   const { data, error } = await supabase
     .from('roles')
     .select('id, name')
     .order('name', { ascending: true });
 
   if (error) throw error;
-  return (data ?? []) as SelectOption[];
+  return data ?? [];
 }
 
-export async function getDepartments(): Promise<SelectOption[]> {
-  const { data, error } = await supabase
-    .from('departments')
-    .select('id, name')
-    .eq('is_active', true)
-    .order('name', { ascending: true });
-
-  if (error) throw error;
-  return (data ?? []) as SelectOption[];
+export async function getDepartmentOptions() {
+  return [];
 }
 
-export async function getShifts(): Promise<SelectOption[]> {
-  const { data, error } = await supabase
-    .from('shifts')
-    .select('id, name')
-    .eq('is_active', true)
-    .order('name', { ascending: true });
-
-  if (error) throw error;
-  return (data ?? []) as SelectOption[];
+export async function getShiftOptions() {
+  return [];
 }
 
-type CreateUserInput = {
-  employee_id: string;
-  username: string;
-  first_name: string;
-  last_name: string;
-  email?: string;
-  role_id: string;
-  home_department_id: string;
-  home_shift_id: string;
-  hire_date?: string;
-  birthday?: string;
-  probationary: boolean;
-  trainer_enabled: boolean;
-};
-
-export async function createUser(input: CreateUserInput) {
+export async function updateUser(
+  userId: string,
+  input: {
+    first_name: string;
+    last_name: string;
+    username: string;
+    employee_id: string | null;
+    email: string | null;
+    role_id: string | null;
+    department_id: string | null;
+    shift_id: string | null;
+    probationary: boolean;
+    trainer_enabled: boolean;
+    is_active: boolean;
+  }
+) {
   const { data, error } = await supabase
     .from('profiles')
-    .insert({
-      ...input,
-      email: input.email || null,
-      hire_date: input.hire_date || null,
-      birthday: input.birthday || null,
-      is_active: true,
-      must_change_password: true,
-      must_create_pin: true,
-      pin_reset_required: false,
+    .update({
+      first_name: input.first_name,
+      last_name: input.last_name,
+      username: input.username,
+      employee_id: input.employee_id,
+      email: input.email,
+      role_id: input.role_id,
+      probationary: input.probationary,
+      trainer_enabled: input.trainer_enabled,
+      is_active: input.is_active,
     })
+    .eq('id', userId)
     .select()
     .single();
 
   if (error) throw error;
   return data;
 }
-type CreateManagedUserInput = {
-  email: string;
-  password: string;
-  employee_id: string;
-  username: string;
-  first_name: string;
-  last_name: string;
-  role_id: string;
-  home_department_id: string;
-  home_shift_id: string;
-  hire_date?: string;
-  birthday?: string;
-  probationary: boolean;
-  trainer_enabled: boolean;
-};
 
-export async function createManagedUser(input: CreateManagedUserInput) {
-  const { data, error } = await supabase.functions.invoke('create-user', {
-    body: input,
-  });
+export async function deactivateUser(userId: string) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({ is_active: false })
+    .eq('id', userId)
+    .select()
+    .single();
 
-  if (error) {
-    console.error('FUNCTION INVOKE ERROR:', error);
-
-    const response = (error as { context?: Response }).context;
-
-    if (response instanceof Response) {
-      const rawText = await response.text();
-
-      try {
-        const body = JSON.parse(rawText);
-        throw new Error(body?.error || error.message);
-      } catch {
-        throw new Error(rawText || error.message);
-      }
-    }
-
-    throw new Error(error.message || 'Failed to create managed user.');
-  }
-
-  if (data?.error) {
-    throw new Error(data.error);
-  }
-
+  if (error) throw error;
   return data;
 }

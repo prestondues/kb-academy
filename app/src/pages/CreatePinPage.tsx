@@ -1,7 +1,7 @@
 import { useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
 import { useAuth } from '../features/auth/useAuth';
+import { setProfilePin } from '../features/training/trainingApi';
 import { theme } from '../styles/theme';
 
 function CreatePinPage() {
@@ -35,23 +35,13 @@ function CreatePinPage() {
     try {
       setSaving(true);
 
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({
-          must_change_password: false,
-          must_create_pin: false,
-          pin_reset_required: false,
-          notes: null,
-        })
-        .eq('id', user.id);
-
-      if (profileError) throw profileError;
+      await setProfilePin(user.id, pin);
 
       await refreshProfile();
       navigate('/');
     } catch (err: unknown) {
       const message =
-        err instanceof Error ? err.message : 'Failed to save PIN state.';
+        err instanceof Error ? err.message : 'Failed to save PIN.';
       setError(message);
     } finally {
       setSaving(false);
@@ -74,9 +64,10 @@ function CreatePinPage() {
             <label style={labelStyle}>PIN</label>
             <input
               type="password"
+              inputMode="numeric"
               style={inputStyle}
               value={pin}
-              onChange={(e) => setPin(e.target.value)}
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
               maxLength={6}
             />
           </div>
@@ -85,9 +76,12 @@ function CreatePinPage() {
             <label style={labelStyle}>Confirm PIN</label>
             <input
               type="password"
+              inputMode="numeric"
               style={inputStyle}
               value={confirmPin}
-              onChange={(e) => setConfirmPin(e.target.value)}
+              onChange={(e) =>
+                setConfirmPin(e.target.value.replace(/\D/g, '').slice(0, 6))
+              }
               maxLength={6}
             />
           </div>

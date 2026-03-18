@@ -12,6 +12,14 @@ type SelectOption = {
   name: string;
 };
 
+type ProfilePinRecord = {
+  id: string;
+  pin: string | null;
+  pin_hash?: string | null;
+  must_create_pin?: boolean | null;
+  pin_reset_required?: boolean | null;
+};
+
 export async function getTrainingModules(): Promise<TrainingModuleRecord[]> {
   const { data, error } = await supabase
     .from('training_modules')
@@ -76,7 +84,7 @@ export async function getTrainingDepartments(): Promise<SelectOption[]> {
 export async function getUserOptions(): Promise<SelectOption[]> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, first_name, last_name')
+    .select('id, first_name, last_name, username')
     .eq('is_active', true)
     .order('last_name', { ascending: true });
 
@@ -86,11 +94,35 @@ export async function getUserOptions(): Promise<SelectOption[]> {
     id: string;
     first_name: string;
     last_name: string;
+    username: string;
   };
 
   return ((data ?? []) as UserOptionRow[]).map((profile) => ({
     id: profile.id,
-    name: `${profile.first_name} ${profile.last_name}`,
+    name: `${profile.first_name} ${profile.last_name} (@${profile.username})`,
+  }));
+}
+
+export async function getTrainerOptions(): Promise<SelectOption[]> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, first_name, last_name, username')
+    .eq('is_active', true)
+    .eq('trainer_enabled', true)
+    .order('last_name', { ascending: true });
+
+  if (error) throw error;
+
+  type UserOptionRow = {
+    id: string;
+    first_name: string;
+    last_name: string;
+    username: string;
+  };
+
+  return ((data ?? []) as UserOptionRow[]).map((profile) => ({
+    id: profile.id,
+    name: `${profile.first_name} ${profile.last_name} (@${profile.username})`,
   }));
 }
 
@@ -490,4 +522,54 @@ export async function createTrainingSessionSignoff(input: {
 
   if (error) throw error;
   return data;
+}
+
+export async function getProfilePinStatus(profileId: string): Promise<{
+  hasPin: boolean;
+  mustCreatePin: boolean;
+  pinResetRequired: boolean;
+}> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, pin_hash, pin, must_create_pin, pin_reset_required')
+    .eq('id', profileId)
+    .maybeSingle();
+
+  if (error) throw error;
+
+  const profile = data as ProfilePinRecord | null;
+
+  return {
+    hasPin: Boolean(profile?.pin_hash || profile?.pin),
+    mustCreatePin: Boolean(profile?.must_create_pin),
+    pinResetRequired: Boolean(profile?.pin_reset_required),
+  };
+}
+
+export async function setProfilePin(profileId: string, pin: string) {
+  const { data, error } = await supabase.functions.invoke('set-pin', {
+    body: {
+      profileId,
+      pin,
+    },
+  });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function verifyProfilePin(
+  profileId: string,
+  enteredPin: string
+): Promise<boolean> {
+  const { data, error } = await supabase.functions.invoke('verify-pin', {
+    body: {
+      profileId,
+      pin: enteredPin,
+    },
+  });
+
+  if (error) throw error;
+
+  return Boolean(data?.valid);
 }
