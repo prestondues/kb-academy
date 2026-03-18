@@ -9,6 +9,10 @@ export type CurrentProfile = {
   must_create_pin: boolean;
   pin_reset_required: boolean;
   is_active: boolean;
+  role: {
+    id: string;
+    name: string;
+  } | null;
 };
 
 export async function getCurrentProfile(userId: string): Promise<CurrentProfile | null> {
@@ -22,7 +26,11 @@ export async function getCurrentProfile(userId: string): Promise<CurrentProfile 
       must_change_password,
       must_create_pin,
       pin_reset_required,
-      is_active
+      is_active,
+      role:roles!profiles_role_id_fkey(
+        id,
+        name
+      )
     `)
     .eq('id', userId)
     .maybeSingle();

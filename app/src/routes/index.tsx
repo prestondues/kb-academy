@@ -1,6 +1,7 @@
 import { createBrowserRouter } from 'react-router-dom';
 import AccountStateGate from '../features/auth/AccountStateGate';
 import ProtectedRoute from '../features/auth/ProtectedRoute';
+import MaintenanceGate from '../features/system/MaintenanceGate';
 import AppLayout from '../layouts/AppLayout';
 import AdminPage from '../pages/AdminPage';
 import AnnouncementsPage from '../pages/AnnouncementsPage';
@@ -8,52 +9,66 @@ import CertificationsPage from '../pages/CertificationsPage';
 import ChangePasswordPage from '../pages/ChangePasswordPage';
 import CreatePinPage from '../pages/CreatePinPage';
 import CreateTrainingModulePage from '../pages/CreateTrainingModulePage';
+import CreateTrainingSectionPage from '../pages/CreateTrainingSectionPage';
+import CreateTrainingSessionPage from '../pages/CreateTrainingSessionPage';
 import CreateUserPage from '../pages/CreateUserPage';
 import DashboardPage from '../pages/DashboardPage';
 import DocumentsPage from '../pages/DocumentsPage';
+import EditTrainingModulePage from '../pages/EditTrainingModulePage';
+import EditTrainingSectionPage from '../pages/EditTrainingSectionPage';
 import LoginPage from '../pages/LoginPage';
 import NotFoundPage from '../pages/NotFoundPage';
 import PlaceChartsPage from '../pages/PlaceChartsPage';
 import ReportsPage from '../pages/ReportsPage';
 import TrainingModuleDetailPage from '../pages/TrainingModuleDetailPage';
 import TrainingPage from '../pages/TrainingPage';
+import TrainingSessionRunnerPage from '../pages/TrainingSessionRunnerPage';
 import UserDetailPage from '../pages/UserDetailPage';
 import UsersPage from '../pages/UsersPage';
-import CreateTrainingSectionPage from '../pages/CreateTrainingSectionPage';
-import EditTrainingModulePage from '../pages/EditTrainingModulePage';
-import EditTrainingSectionPage from '../pages/EditTrainingSectionPage';
-import CreateTrainingSessionPage from '../pages/CreateTrainingSessionPage';
-import TrainingSessionRunnerPage from '../pages/TrainingSessionRunnerPage';
 
 export const router = createBrowserRouter([
   {
     path: '/login',
+    element: (
+      <MaintenanceGate>
+        <LoginPage />
+      </MaintenanceGate>
+    ),
+  },
+  {
+    path: '/admin-login',
     element: <LoginPage />,
   },
   {
     path: '/change-password',
     element: (
-      <ProtectedRoute>
-        <ChangePasswordPage />
-      </ProtectedRoute>
+      <MaintenanceGate>
+        <ProtectedRoute>
+          <ChangePasswordPage />
+        </ProtectedRoute>
+      </MaintenanceGate>
     ),
   },
   {
     path: '/create-pin',
     element: (
-      <ProtectedRoute>
-        <CreatePinPage />
-      </ProtectedRoute>
+      <MaintenanceGate>
+        <ProtectedRoute>
+          <CreatePinPage />
+        </ProtectedRoute>
+      </MaintenanceGate>
     ),
   },
   {
     path: '/',
     element: (
-      <ProtectedRoute>
-        <AccountStateGate>
-          <AppLayout />
-        </AccountStateGate>
-      </ProtectedRoute>
+      <MaintenanceGate>
+        <ProtectedRoute>
+          <AccountStateGate>
+            <AppLayout />
+          </AccountStateGate>
+        </ProtectedRoute>
+      </MaintenanceGate>
     ),
     errorElement: <NotFoundPage />,
     children: [
