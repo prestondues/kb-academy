@@ -1,0 +1,26 @@
+# KB Academy Training Session Archive and View Mode
+
+## Purpose
+Separate operational training session execution from historical record viewing.
+
+## Changes
+- training session record view is read-only
+- active session runner remains interactive only for in-progress workflow
+- admins can archive sessions without deleting them
+- archive metadata is stored on the training session record
+
+## Archive Fields
+- archived_at
+- archived_by
+- archive_reason
+
+## Rules
+- archived sessions remain in history unless later filtered out
+- archived sessions are never hard-deleted through the app
+- viewing a session from Training Records opens a read-only record page
+- viewing mode does not allow section edits, sign-off actions, or completion actions
+
+## Future Expansion
+- archive filters on Training Records
+- dedicated audit trail event logging
+- unarchive flow if needed

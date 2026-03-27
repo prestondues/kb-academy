@@ -1,15 +1,8 @@
-export type TrainingSectionType =
-  | 'text'
-  | 'video'
-  | 'image'
-  | 'pdf'
-  | 'acknowledgement';
-
 export type TrainingSectionRecord = {
   id: string;
   module_id: string;
   title: string;
-  section_type: TrainingSectionType;
+  section_type: 'text' | 'video' | 'image' | 'pdf' | 'acknowledgement';
   body_text?: string | null;
   media_url?: string | null;
   sort_order: number;
@@ -19,7 +12,7 @@ export type TrainingSectionRecord = {
 export type TrainingSectionCardModel = {
   id: string;
   title: string;
-  typeLabel: string;
+  sectionType: string;
   bodyText: string;
   mediaUrl: string;
   sortOrder: number;

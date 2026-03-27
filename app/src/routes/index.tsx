@@ -23,6 +23,8 @@ import PlaceChartsPage from '../pages/PlaceChartsPage';
 import ReportsPage from '../pages/ReportsPage';
 import TrainingModuleDetailPage from '../pages/TrainingModuleDetailPage';
 import TrainingPage from '../pages/TrainingPage';
+import TrainingRecordsPage from '../pages/TrainingRecordsPage';
+import TrainingSessionRecordPage from '../pages/TrainingSessionRecordPage';
 import TrainingSessionRunnerPage from '../pages/TrainingSessionRunnerPage';
 import UserDetailPage from '../pages/UserDetailPage';
 import UsersPage from '../pages/UsersPage';
@@ -77,12 +79,14 @@ export const router = createBrowserRouter([
       { path: 'training', element: <TrainingPage /> },
       { path: 'training/new', element: <CreateTrainingModulePage /> },
       { path: 'training/conduct', element: <CreateTrainingSessionPage /> },
+      { path: 'training/records', element: <TrainingRecordsPage /> },
       { path: 'training/:moduleId', element: <TrainingModuleDetailPage /> },
       { path: 'training/:moduleId/edit', element: <EditTrainingModulePage /> },
       { path: 'training/:moduleId/start', element: <CreateTrainingSessionPage /> },
       { path: 'training/:moduleId/sections/new', element: <CreateTrainingSectionPage /> },
       { path: 'training/:moduleId/sections/:sectionId/edit', element: <EditTrainingSectionPage /> },
       { path: 'training/sessions/:sessionId', element: <TrainingSessionRunnerPage /> },
+      { path: 'training/sessions/:sessionId/view', element: <TrainingSessionRecordPage /> },
       { path: 'certifications', element: <CertificationsPage /> },
       { path: 'place-charts', element: <PlaceChartsPage /> },
       { path: 'users', element: <UsersPage /> },

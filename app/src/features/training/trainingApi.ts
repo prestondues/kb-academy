@@ -392,6 +392,9 @@ export async function getTrainingSessionById(
       started_at,
       completed_at,
       duration_minutes,
+      archived_at,
+      archived_by,
+      archive_reason,
       module:training_modules!training_sessions_module_id_fkey(title),
       trainee:profiles!training_sessions_trainee_id_fkey(first_name, last_name),
       trainer:profiles!training_sessions_trainer_id_fkey(first_name, last_name)
@@ -535,6 +538,26 @@ export async function completeTrainingSession(sessionId: string) {
   return data;
 }
 
+export async function archiveTrainingSession(input: {
+  sessionId: string;
+  archivedBy: string;
+  reason: string;
+}) {
+  const { data, error } = await supabase
+    .from('training_sessions')
+    .update({
+      archived_at: new Date().toISOString(),
+      archived_by: input.archivedBy,
+      archive_reason: input.reason,
+    })
+    .eq('id', input.sessionId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
 export async function getInProgressTrainingSessions(): Promise<TrainingSessionRecord[]> {
   const { data, error } = await supabase
     .from('training_sessions')
@@ -547,11 +570,15 @@ export async function getInProgressTrainingSessions(): Promise<TrainingSessionRe
       started_at,
       completed_at,
       duration_minutes,
+      archived_at,
+      archived_by,
+      archive_reason,
       module:training_modules!training_sessions_module_id_fkey(title),
       trainee:profiles!training_sessions_trainee_id_fkey(first_name, last_name),
       trainer:profiles!training_sessions_trainer_id_fkey(first_name, last_name)
     `)
     .eq('session_status', 'in_progress')
+    .is('archived_at', null)
     .order('started_at', { ascending: false });
 
   if (error) throw error;
@@ -570,13 +597,43 @@ export async function getCompletedTrainingSessions(): Promise<TrainingSessionRec
       started_at,
       completed_at,
       duration_minutes,
+      archived_at,
+      archived_by,
+      archive_reason,
       module:training_modules!training_sessions_module_id_fkey(title),
       trainee:profiles!training_sessions_trainee_id_fkey(first_name, last_name),
       trainer:profiles!training_sessions_trainer_id_fkey(first_name, last_name)
     `)
     .eq('session_status', 'completed')
+    .is('archived_at', null)
     .order('completed_at', { ascending: false })
     .limit(8);
+
+  if (error) throw error;
+  return (data ?? []) as unknown as TrainingSessionRecord[];
+}
+
+export async function getAllTrainingSessions(): Promise<TrainingSessionRecord[]> {
+  const { data, error } = await supabase
+    .from('training_sessions')
+    .select(`
+      id,
+      module_id,
+      trainee_id,
+      trainer_id,
+      session_status,
+      started_at,
+      completed_at,
+      duration_minutes,
+      archived_at,
+      archived_by,
+      archive_reason,
+      module:training_modules!training_sessions_module_id_fkey(title),
+      trainee:profiles!training_sessions_trainee_id_fkey(first_name, last_name),
+      trainer:profiles!training_sessions_trainer_id_fkey(first_name, last_name)
+    `)
+    .is('archived_at', null)
+    .order('started_at', { ascending: false });
 
   if (error) throw error;
   return (data ?? []) as unknown as TrainingSessionRecord[];

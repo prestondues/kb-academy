@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-import StatusBadge from '../../components/StatusBadge';
+import type { CSSProperties } from 'react';
+import { theme } from '../../styles/theme';
 import type { TrainingSectionCardModel } from './sectionTypes';
 
 function TrainingSectionCard({
@@ -9,134 +10,149 @@ function TrainingSectionCard({
   onDragStart,
   onDragOver,
   onDrop,
-  isDragging,
+  isDragging = false,
 }: {
   section: TrainingSectionCardModel;
   moduleId: string;
   onDelete: () => void;
-  onDragStart: () => void;
-  onDragOver: () => void;
-  onDrop: () => void;
+  onDragStart?: () => void;
+  onDragOver?: () => void;
+  onDrop?: () => void;
   isDragging?: boolean;
 }) {
   return (
     <div
       draggable
       onDragStart={onDragStart}
-      onDragOver={(e) => {
-        e.preventDefault();
-        onDragOver();
+      onDragOver={(event) => {
+        event.preventDefault();
+        onDragOver?.();
       }}
-      onDrop={(e) => {
-        e.preventDefault();
-        onDrop();
+      onDrop={(event) => {
+        event.preventDefault();
+        onDrop?.();
       }}
       style={{
-        padding: '16px',
-        border: '1px solid #dbe4ee',
-        borderRadius: '16px',
-        background: isDragging ? '#f7f9fc' : '#ffffff',
-        opacity: isDragging ? 0.7 : 1,
-        cursor: 'grab',
+        ...cardStyle,
+        opacity: isDragging ? 0.6 : 1,
       }}
     >
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          gap: '12px',
-          alignItems: 'flex-start',
-        }}
-      >
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-          <div
-            style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '10px',
-              background: '#eef3f8',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 800,
-              color: '#5f6b76',
-              flexShrink: 0,
-            }}
-            title="Drag to reorder"
-          >
-            ⋮⋮
+      <div style={headerRowStyle}>
+        <div>
+          <div style={titleRowStyle}>
+            <span style={sortPillStyle}>{section.sortOrder}</span>
+            <span style={titleStyle}>{section.title}</span>
           </div>
-
-          <div>
-            <div style={{ fontWeight: 800, fontSize: '16px' }}>
-              {section.sortOrder}. {section.title}
-            </div>
-            <div style={{ marginTop: '6px', color: '#5f6b76', fontSize: '14px' }}>
-              {section.typeLabel}
-            </div>
+          <div style={metaStyle}>
+            {section.sectionType}
+            {section.isRequired ? ' • required' : ' • optional'}
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-          <StatusBadge
-            label={section.isRequired ? 'Required' : 'Optional'}
-            variant={section.isRequired ? 'info' : 'warning'}
-          />
-
+        <div style={actionsStyle}>
           <Link
             to={`/training/${moduleId}/sections/${section.id}/edit`}
-            style={editLinkStyle}
+            style={actionLinkStyle}
           >
-            ✎ Edit
+            Edit
           </Link>
-
-          <button
-            type="button"
-            onClick={onDelete}
-            style={deleteButtonStyle}
-          >
+          <button type="button" onClick={onDelete} style={deleteButtonStyle}>
             Delete
           </button>
         </div>
       </div>
 
       {section.bodyText ? (
-        <div style={{ marginTop: '12px', color: '#5f6b76', lineHeight: 1.6 }}>
-          {section.bodyText}
-        </div>
+        <div style={bodyStyle}>{section.bodyText}</div>
       ) : null}
 
       {section.mediaUrl ? (
-        <div
-          style={{
-            marginTop: '12px',
-            fontSize: '13px',
-            color: '#194f91',
-            wordBreak: 'break-word',
-          }}
-        >
-          {section.mediaUrl}
-        </div>
+        <div style={mediaStyle}>{section.mediaUrl}</div>
       ) : null}
     </div>
   );
 }
 
-const editLinkStyle: React.CSSProperties = {
-  textDecoration: 'none',
-  fontSize: '13px',
-  fontWeight: 700,
-  color: '#194f91',
+const cardStyle: CSSProperties = {
+  border: `1px solid ${theme.colors.border}`,
+  borderRadius: '18px',
+  padding: '16px',
+  background: '#ffffff',
 };
 
-const deleteButtonStyle: React.CSSProperties = {
-  border: '1px solid #f3cccc',
-  background: '#fff7f7',
+const headerRowStyle: CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  gap: '16px',
+  alignItems: 'flex-start',
+};
+
+const titleRowStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '10px',
+  marginBottom: '6px',
+};
+
+const sortPillStyle: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minWidth: '28px',
+  height: '28px',
+  borderRadius: '999px',
+  background: '#eef6ff',
+  color: '#194f91',
+  fontSize: '12px',
+  fontWeight: 800,
+  padding: '0 8px',
+};
+
+const titleStyle: CSSProperties = {
+  fontSize: '16px',
+  fontWeight: 800,
+  color: theme.colors.text,
+};
+
+const metaStyle: CSSProperties = {
+  fontSize: '13px',
+  color: theme.colors.mutedText,
+};
+
+const actionsStyle: CSSProperties = {
+  display: 'flex',
+  gap: '10px',
+  alignItems: 'center',
+  flexShrink: 0,
+};
+
+const actionLinkStyle: CSSProperties = {
+  color: '#194f91',
+  textDecoration: 'none',
+  fontWeight: 700,
+  fontSize: '14px',
+};
+
+const deleteButtonStyle: CSSProperties = {
+  border: 'none',
+  background: 'transparent',
   color: '#a12828',
-  borderRadius: '10px',
-  padding: '6px 10px',
   cursor: 'pointer',
   fontWeight: 700,
+  fontSize: '14px',
+};
+
+const bodyStyle: CSSProperties = {
+  marginTop: '12px',
+  color: theme.colors.mutedText,
+  lineHeight: 1.6,
+};
+
+const mediaStyle: CSSProperties = {
+  marginTop: '12px',
+  color: '#194f91',
+  fontSize: '13px',
+  wordBreak: 'break-word',
 };
 
 export default TrainingSectionCard;
