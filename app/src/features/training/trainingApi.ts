@@ -20,6 +20,17 @@ type ProfilePinRecord = {
   pin_reset_required?: boolean | null;
 };
 
+type TrainingCertificationRecord = {
+  id: string;
+  trainee_id: string;
+  module_id: string;
+  issued_at: string;
+  expires_at?: string | null;
+  last_session_id?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
 export async function getTrainingModules(): Promise<TrainingModuleRecord[]> {
   const { data, error } = await supabase
     .from('training_modules')
@@ -380,6 +391,7 @@ export async function getTrainingSessionById(
       session_status,
       started_at,
       completed_at,
+      duration_minutes,
       module:training_modules!training_sessions_module_id_fkey(title),
       trainee:profiles!training_sessions_trainee_id_fkey(first_name, last_name),
       trainer:profiles!training_sessions_trainer_id_fkey(first_name, last_name)
@@ -427,18 +439,99 @@ export async function markTrainingSessionSectionComplete(
   return data;
 }
 
+function calculateDurationMinutes(
+  startedAt?: string | null,
+  completedAt?: string | null
+): number | null {
+  if (!startedAt || !completedAt) return null;
+
+  const started = new Date(startedAt).getTime();
+  const completed = new Date(completedAt).getTime();
+
+  if (Number.isNaN(started) || Number.isNaN(completed) || completed < started) {
+    return null;
+  }
+
+  return Math.max(1, Math.round((completed - started) / 60000));
+}
+
+function calculateExpiresAt(
+  issuedAtIso: string,
+  recertFrequencyDays?: number | null
+): string | null {
+  if (!recertFrequencyDays || recertFrequencyDays <= 0) return null;
+
+  const issued = new Date(issuedAtIso);
+  issued.setDate(issued.getDate() + recertFrequencyDays);
+  return issued.toISOString();
+}
+
+export async function upsertTrainingCertification(input: {
+  trainee_id: string;
+  module_id: string;
+  last_session_id: string;
+  issued_at: string;
+  expires_at?: string | null;
+}) {
+  const { data, error } = await supabase
+    .from('training_certifications')
+    .upsert(
+      {
+        trainee_id: input.trainee_id,
+        module_id: input.module_id,
+        issued_at: input.issued_at,
+        expires_at: input.expires_at ?? null,
+        last_session_id: input.last_session_id,
+      },
+      {
+        onConflict: 'trainee_id,module_id',
+      }
+    )
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as TrainingCertificationRecord;
+}
+
 export async function completeTrainingSession(sessionId: string) {
+  const session = await getTrainingSessionById(sessionId);
+
+  if (!session) {
+    throw new Error('Training session not found.');
+  }
+
+  const completedAt = new Date().toISOString();
+  const durationMinutes = calculateDurationMinutes(session.started_at, completedAt);
+
   const { data, error } = await supabase
     .from('training_sessions')
     .update({
       session_status: 'completed',
-      completed_at: new Date().toISOString(),
+      completed_at: completedAt,
+      duration_minutes: durationMinutes,
     })
     .eq('id', sessionId)
     .select()
     .single();
 
   if (error) throw error;
+
+  const module = await getTrainingModuleById(session.module_id);
+
+  const expiresAt = calculateExpiresAt(
+    completedAt,
+    module?.recert_frequency_days ?? null
+  );
+
+  await upsertTrainingCertification({
+    trainee_id: session.trainee_id,
+    module_id: session.module_id,
+    last_session_id: sessionId,
+    issued_at: completedAt,
+    expires_at: expiresAt,
+  });
+
   return data;
 }
 
@@ -453,6 +546,7 @@ export async function getInProgressTrainingSessions(): Promise<TrainingSessionRe
       session_status,
       started_at,
       completed_at,
+      duration_minutes,
       module:training_modules!training_sessions_module_id_fkey(title),
       trainee:profiles!training_sessions_trainee_id_fkey(first_name, last_name),
       trainer:profiles!training_sessions_trainer_id_fkey(first_name, last_name)
@@ -475,6 +569,7 @@ export async function getCompletedTrainingSessions(): Promise<TrainingSessionRec
       session_status,
       started_at,
       completed_at,
+      duration_minutes,
       module:training_modules!training_sessions_module_id_fkey(title),
       trainee:profiles!training_sessions_trainee_id_fkey(first_name, last_name),
       trainer:profiles!training_sessions_trainer_id_fkey(first_name, last_name)

@@ -82,9 +82,6 @@ function TrainingPage() {
     });
   }, [modules, search, typeFilter, departmentFilter, statusFilter]);
 
-  const resumePreview = inProgressSessions.slice(0, 2);
-  const completedPreview = completedSessions.slice(0, 2);
-
   return (
     <PageContainer
       title="Training"
@@ -100,27 +97,100 @@ function TrainingPage() {
         </div>
       }
     >
-      <div style={activityShellStyle}>
-        <div style={activityHeaderStyle}>
-          <div>
-            <div style={activityEyebrowStyle}>Session Activity</div>
-            <h2 style={activityHeadingStyle}>Resume and recent history</h2>
+      <div style={pageGridStyle}>
+        <div style={leftColumnStyle}>
+          <div style={toolbarShellStyle}>
+            <div style={searchWrapStyle}>
+              <span style={searchIconStyle}>⌕</span>
+              <input
+                style={searchInputStyle}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search modules by title, department, or SQF"
+              />
+            </div>
+
+            <div style={filterRowStyle}>
+              <FilterSelect
+                value={typeFilter}
+                onChange={setTypeFilter}
+                options={typeOptions}
+                label="Type"
+              />
+              <FilterSelect
+                value={departmentFilter}
+                onChange={setDepartmentFilter}
+                options={departmentOptions}
+                label="Department"
+              />
+              <FilterSelect
+                value={statusFilter}
+                onChange={setStatusFilter}
+                options={['All', 'Active', 'Inactive']}
+                label="Status"
+              />
+              <div style={moduleCountWrapStyle}>
+                <span style={moduleCountLabelStyle}>Showing</span>
+                <div style={moduleCountValueStyle}>
+                  {filteredModules.length} module{filteredModules.length === 1 ? '' : 's'}
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div style={activityStatsWrapStyle}>
-            <StatPill label="In Progress" value={String(inProgressSessions.length)} />
-            <StatPill label="Completed" value={String(completedSessions.length)} />
+          <div style={libraryHeaderStyle}>
+            <div>
+              <div style={libraryEyebrowStyle}>Module Library</div>
+              <h2 style={libraryHeadingStyle}>Training Modules</h2>
+            </div>
+          </div>
+
+          <div style={moduleGridStyle}>
+            {loading ? (
+              <div style={stateStyle}>Loading training data...</div>
+            ) : error ? (
+              <div style={stateStyle}>{error}</div>
+            ) : filteredModules.length === 0 ? (
+              <div style={emptyStateStyle}>
+                <div style={{ fontSize: '18px', fontWeight: 800, marginBottom: '8px' }}>
+                  No training modules found
+                </div>
+                <div style={{ color: theme.colors.mutedText, lineHeight: 1.6 }}>
+                  Try adjusting your search or filters.
+                </div>
+              </div>
+            ) : (
+              filteredModules.map((module) => (
+                <TrainingModuleCard key={module.id} module={module} />
+              ))
+            )}
           </div>
         </div>
 
-        <div style={activityGridStyle}>
-          <div>
-            <div style={columnTitleStyle}>Resume Training</div>
-            {resumePreview.length === 0 ? (
+        <div style={rightColumnStyle}>
+          <div style={sidebarCardStyle}>
+            <div style={sidebarEyebrowStyle}>Session Activity</div>
+            <h2 style={sidebarHeadingStyle}>Training Status</h2>
+
+            <div style={badgeRowStyle}>
+              <StatPill label="In Progress" value={String(inProgressSessions.length)} />
+              <StatPill label="Completed" value={String(completedSessions.length)} />
+            </div>
+          </div>
+
+          <div style={sidebarCardStyle}>
+            <div style={panelHeaderStyle}>
+              <div>
+                <div style={panelEyebrowStyle}>Resume</div>
+                <div style={panelTitleStyle}>In Progress Sessions</div>
+              </div>
+            </div>
+
+            {inProgressSessions.length === 0 ? (
               <div style={activityEmptyStyle}>No sessions waiting to be resumed.</div>
             ) : (
               <div style={{ display: 'grid', gap: '10px' }}>
-                {resumePreview.map((session) => (
+                {inProgressSessions.slice(0, 5).map((session) => (
                   <SlimSessionRow
                     key={session.id}
                     session={session}
@@ -133,13 +203,19 @@ function TrainingPage() {
             )}
           </div>
 
-          <div>
-            <div style={columnTitleStyle}>Recent Completions</div>
-            {completedPreview.length === 0 ? (
+          <div style={sidebarCardStyle}>
+            <div style={panelHeaderStyle}>
+              <div>
+                <div style={panelEyebrowStyle}>Recent</div>
+                <div style={panelTitleStyle}>Completed Sessions</div>
+              </div>
+            </div>
+
+            {completedSessions.length === 0 ? (
               <div style={activityEmptyStyle}>No recent completed sessions.</div>
             ) : (
               <div style={{ display: 'grid', gap: '10px' }}>
-                {completedPreview.map((session) => (
+                {completedSessions.slice(0, 5).map((session) => (
                   <SlimSessionRow
                     key={session.id}
                     session={session}
@@ -152,73 +228,6 @@ function TrainingPage() {
             )}
           </div>
         </div>
-      </div>
-
-      <div style={toolbarShellStyle}>
-        <div style={searchWrapStyle}>
-          <span style={searchIconStyle}>⌕</span>
-          <input
-            style={searchInputStyle}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search modules by title, department, or SQF"
-          />
-        </div>
-
-        <div style={filterRowStyle}>
-          <FilterSelect
-            value={typeFilter}
-            onChange={setTypeFilter}
-            options={typeOptions}
-            label="Type"
-          />
-          <FilterSelect
-            value={departmentFilter}
-            onChange={setDepartmentFilter}
-            options={departmentOptions}
-            label="Department"
-          />
-          <FilterSelect
-            value={statusFilter}
-            onChange={setStatusFilter}
-            options={['All', 'Active', 'Inactive']}
-            label="Status"
-          />
-          <div style={moduleCountWrapStyle}>
-            <span style={moduleCountLabelStyle}>Showing</span>
-            <div style={moduleCountValueStyle}>
-              {filteredModules.length} module{filteredModules.length === 1 ? '' : 's'}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div style={libraryHeaderStyle}>
-        <div>
-          <div style={libraryEyebrowStyle}>Module Library</div>
-          <h2 style={libraryHeadingStyle}>Training Modules</h2>
-        </div>
-      </div>
-
-      <div style={moduleGridStyle}>
-        {loading ? (
-          <div style={stateStyle}>Loading training data...</div>
-        ) : error ? (
-          <div style={stateStyle}>{error}</div>
-        ) : filteredModules.length === 0 ? (
-          <div style={emptyStateStyle}>
-            <div style={{ fontSize: '18px', fontWeight: 800, marginBottom: '8px' }}>
-              No training modules found
-            </div>
-            <div style={{ color: theme.colors.mutedText, lineHeight: 1.6 }}>
-              Try adjusting your search or filters.
-            </div>
-          </div>
-        ) : (
-          filteredModules.map((module) => (
-            <TrainingModuleCard key={module.id} module={module} />
-          ))
-        )}
       </div>
     </PageContainer>
   );
@@ -298,87 +307,23 @@ function SlimSessionRow({
   );
 }
 
-const activityShellStyle: CSSProperties = {
-  background: '#ffffff',
-  border: `1px solid ${theme.colors.border}`,
-  borderRadius: '22px',
-  padding: '20px',
-  marginBottom: '18px',
-  boxShadow: '0 10px 30px rgba(8, 31, 45, 0.04)',
-};
-
-const activityHeaderStyle: CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'flex-start',
-  gap: '16px',
-  marginBottom: '18px',
-  flexWrap: 'wrap',
-};
-
-const activityEyebrowStyle: CSSProperties = {
-  fontSize: '12px',
-  fontWeight: 700,
-  textTransform: 'uppercase',
-  letterSpacing: '0.05em',
-  color: theme.colors.mutedText,
-  marginBottom: '4px',
-};
-
-const activityHeadingStyle: CSSProperties = {
-  margin: 0,
-  fontSize: '22px',
-  fontWeight: 800,
-  color: theme.colors.text,
-};
-
-const activityStatsWrapStyle: CSSProperties = {
-  display: 'flex',
-  gap: '10px',
-  flexWrap: 'wrap',
-};
-
-const statPillStyle: CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: '8px',
-  padding: '10px 14px',
-  borderRadius: '999px',
-  background: theme.colors.infoBg,
-  color: theme.colors.infoText,
-  fontWeight: 700,
-};
-
-const statPillLabelStyle: CSSProperties = {
-  fontSize: '12px',
-  opacity: 0.9,
-};
-
-const statPillValueStyle: CSSProperties = {
-  fontSize: '14px',
-  fontWeight: 800,
-};
-
-const activityGridStyle: CSSProperties = {
+const pageGridStyle: CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: '1fr 1fr',
+  gridTemplateColumns: 'minmax(0, 1.7fr) minmax(320px, 0.9fr)',
   gap: '18px',
+  alignItems: 'start',
 };
 
-const columnTitleStyle: CSSProperties = {
-  fontSize: '13px',
-  fontWeight: 800,
-  textTransform: 'uppercase',
-  letterSpacing: '0.04em',
-  color: theme.colors.mutedText,
-  marginBottom: '10px',
+const leftColumnStyle: CSSProperties = {
+  display: 'grid',
+  gap: '16px',
+  minWidth: 0,
 };
 
-const activityEmptyStyle: CSSProperties = {
-  color: theme.colors.mutedText,
-  fontSize: '14px',
-  lineHeight: 1.6,
-  padding: '8px 0',
+const rightColumnStyle: CSSProperties = {
+  display: 'grid',
+  gap: '16px',
+  alignContent: 'start',
 };
 
 const toolbarShellStyle: CSSProperties = {
@@ -386,7 +331,6 @@ const toolbarShellStyle: CSSProperties = {
   border: `1px solid ${theme.colors.border}`,
   borderRadius: '22px',
   padding: '18px',
-  marginBottom: '18px',
   boxShadow: '0 10px 30px rgba(8, 31, 45, 0.04)',
 };
 
@@ -463,7 +407,7 @@ const moduleCountValueStyle: CSSProperties = {
 };
 
 const libraryHeaderStyle: CSSProperties = {
-  marginBottom: '12px',
+  marginBottom: '2px',
 };
 
 const libraryEyebrowStyle: CSSProperties = {
@@ -477,9 +421,92 @@ const libraryEyebrowStyle: CSSProperties = {
 
 const libraryHeadingStyle: CSSProperties = {
   margin: 0,
+  fontSize: '24px',
+  fontWeight: 800,
+  color: theme.colors.text,
+};
+
+const moduleGridStyle: CSSProperties = {
+  display: 'grid',
+  gap: '12px',
+};
+
+const sidebarCardStyle: CSSProperties = {
+  background: '#ffffff',
+  border: `1px solid ${theme.colors.border}`,
+  borderRadius: '22px',
+  padding: '18px',
+  boxShadow: '0 10px 30px rgba(8, 31, 45, 0.04)',
+};
+
+const sidebarEyebrowStyle: CSSProperties = {
+  fontSize: '12px',
+  fontWeight: 700,
+  textTransform: 'uppercase',
+  letterSpacing: '0.05em',
+  color: theme.colors.mutedText,
+  marginBottom: '4px',
+};
+
+const sidebarHeadingStyle: CSSProperties = {
+  margin: 0,
   fontSize: '22px',
   fontWeight: 800,
   color: theme.colors.text,
+};
+
+const badgeRowStyle: CSSProperties = {
+  display: 'grid',
+  gap: '10px',
+  marginTop: '16px',
+};
+
+const statPillStyle: CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  gap: '8px',
+  padding: '12px 14px',
+  borderRadius: '16px',
+  background: theme.colors.infoBg,
+  color: theme.colors.infoText,
+  fontWeight: 700,
+};
+
+const statPillLabelStyle: CSSProperties = {
+  fontSize: '13px',
+  opacity: 0.95,
+};
+
+const statPillValueStyle: CSSProperties = {
+  fontSize: '16px',
+  fontWeight: 800,
+};
+
+const panelHeaderStyle: CSSProperties = {
+  marginBottom: '10px',
+};
+
+const panelEyebrowStyle: CSSProperties = {
+  fontSize: '11px',
+  fontWeight: 700,
+  textTransform: 'uppercase',
+  letterSpacing: '0.05em',
+  color: theme.colors.mutedText,
+  marginBottom: '4px',
+};
+
+const panelTitleStyle: CSSProperties = {
+  fontSize: '18px',
+  fontWeight: 800,
+  color: theme.colors.text,
+};
+
+const activityEmptyStyle: CSSProperties = {
+  color: theme.colors.mutedText,
+  fontSize: '14px',
+  lineHeight: 1.6,
+  padding: '4px 0',
 };
 
 const sessionRowStyle: CSSProperties = {
@@ -524,11 +551,6 @@ const miniActionStyle: CSSProperties = {
   padding: '8px 12px',
   fontWeight: 700,
   cursor: 'pointer',
-};
-
-const moduleGridStyle: CSSProperties = {
-  display: 'grid',
-  gap: '12px',
 };
 
 const stateStyle: CSSProperties = {
