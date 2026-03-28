@@ -20,7 +20,7 @@ type ProfilePinRecord = {
   pin_reset_required?: boolean | null;
 };
 
-type TrainingCertificationRecord = {
+export type TrainingCertificationRecord = {
   id: string;
   trainee_id: string;
   module_id: string;
@@ -29,6 +29,36 @@ type TrainingCertificationRecord = {
   last_session_id?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
+  module?: {
+    id?: string | null;
+    title?: string | null;
+    department?: {
+      name?: string | null;
+    } | null;
+  } | null;
+};
+
+export type TrainingCoverageTargetRecord = {
+  id: string;
+  module_id: string;
+  department_id: string;
+  shift_id: string;
+  target_count: number;
+  is_active: boolean;
+  created_at?: string | null;
+  updated_at?: string | null;
+  module?: {
+    id?: string | null;
+    title?: string | null;
+  } | null;
+  department?: {
+    id?: string | null;
+    name?: string | null;
+  } | null;
+  shift?: {
+    id?: string | null;
+    name?: string | null;
+  } | null;
 };
 
 type ProfileMatrixRecord = {
@@ -37,6 +67,30 @@ type ProfileMatrixRecord = {
   last_name: string;
   username: string;
   is_active: boolean;
+  department?: {
+    id?: string | null;
+    name?: string | null;
+  } | null;
+  shift?: {
+    id?: string | null;
+    name?: string | null;
+  } | null;
+};
+
+export type UserTrainingProfileRecord = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  username: string;
+  email?: string | null;
+  employee_id?: string | null;
+  trainer_enabled?: boolean | null;
+  probationary?: boolean | null;
+  is_active: boolean;
+  role?: {
+    id?: string | null;
+    name?: string | null;
+  } | null;
   department?: {
     id?: string | null;
     name?: string | null;
@@ -103,6 +157,17 @@ export async function getTrainingDepartments(): Promise<SelectOption[]> {
     .select('id, name')
     .eq('is_active', true)
     .order('name', { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []) as SelectOption[];
+}
+
+export async function getShifts(): Promise<SelectOption[]> {
+  const { data, error } = await supabase
+    .from('shifts')
+    .select('id, name')
+    .eq('is_active', true)
+    .order('sort_order', { ascending: true });
 
   if (error) throw error;
   return (data ?? []) as SelectOption[];
@@ -183,11 +248,156 @@ export async function getTrainingCertifications(): Promise<TrainingCertification
       expires_at,
       last_session_id,
       created_at,
-      updated_at
+      updated_at,
+      module:training_modules!training_certifications_module_id_fkey(
+        id,
+        title,
+        department:departments!training_modules_department_id_fkey(name)
+      )
     `);
 
   if (error) throw error;
   return (data ?? []) as TrainingCertificationRecord[];
+}
+
+export async function getTrainingCertificationsByUser(
+  userId: string
+): Promise<TrainingCertificationRecord[]> {
+  const { data, error } = await supabase
+    .from('training_certifications')
+    .select(`
+      id,
+      trainee_id,
+      module_id,
+      issued_at,
+      expires_at,
+      last_session_id,
+      created_at,
+      updated_at,
+      module:training_modules!training_certifications_module_id_fkey(
+        id,
+        title,
+        department:departments!training_modules_department_id_fkey(name)
+      )
+    `)
+    .eq('trainee_id', userId)
+    .order('issued_at', { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []) as TrainingCertificationRecord[];
+}
+
+export async function getUserTrainingProfile(
+  userId: string
+): Promise<UserTrainingProfileRecord | null> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select(`
+      id,
+      first_name,
+      last_name,
+      username,
+      email,
+      employee_id,
+      trainer_enabled,
+      probationary,
+      is_active,
+      role:roles(id, name),
+      department:departments!profiles_department_id_fkey(id, name),
+      shift:shifts!profiles_shift_id_fkey(id, name)
+    `)
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return (data ?? null) as UserTrainingProfileRecord | null;
+}
+
+export async function getTrainingCoverageTargets(): Promise<TrainingCoverageTargetRecord[]> {
+  const { data, error } = await supabase
+    .from('training_coverage_targets')
+    .select(`
+      id,
+      module_id,
+      department_id,
+      shift_id,
+      target_count,
+      is_active,
+      created_at,
+      updated_at,
+      module:training_modules!training_coverage_targets_module_id_fkey(id, title),
+      department:departments!training_coverage_targets_department_id_fkey(id, name),
+      shift:shifts!training_coverage_targets_shift_id_fkey(id, name)
+    `)
+    .eq('is_active', true)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []) as TrainingCoverageTargetRecord[];
+}
+
+export async function upsertTrainingCoverageTarget(input: {
+  module_id: string;
+  department_id: string;
+  shift_id: string;
+  target_count: number;
+}) {
+  const { data, error } = await supabase
+    .from('training_coverage_targets')
+    .upsert(
+      {
+        module_id: input.module_id,
+        department_id: input.department_id,
+        shift_id: input.shift_id,
+        target_count: input.target_count,
+        is_active: true,
+      },
+      {
+        onConflict: 'module_id,department_id,shift_id',
+      }
+    )
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as TrainingCoverageTargetRecord;
+}
+
+export async function updateTrainingCoverageTarget(input: {
+  id: string;
+  module_id: string;
+  department_id: string;
+  shift_id: string;
+  target_count: number;
+}) {
+  const { data, error } = await supabase
+    .from('training_coverage_targets')
+    .update({
+      module_id: input.module_id,
+      department_id: input.department_id,
+      shift_id: input.shift_id,
+      target_count: input.target_count,
+    })
+    .eq('id', input.id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as TrainingCoverageTargetRecord;
+}
+
+export async function deleteTrainingCoverageTarget(id: string) {
+  const { data, error } = await supabase
+    .from('training_coverage_targets')
+    .update({
+      is_active: false,
+    })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as TrainingCoverageTargetRecord;
 }
 
 type CreateTrainingModuleInput = {
@@ -698,6 +908,37 @@ export async function getAllTrainingSessions(): Promise<TrainingSessionRecord[]>
       trainer:profiles!training_sessions_trainer_id_fkey(first_name, last_name)
     `)
     .is('archived_at', null)
+    .order('started_at', { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []) as unknown as TrainingSessionRecord[];
+}
+
+export async function getTrainingSessionsByUser(
+  userId: string
+): Promise<TrainingSessionRecord[]> {
+  const { data, error } = await supabase
+    .from('training_sessions')
+    .select(`
+      id,
+      module_id,
+      trainee_id,
+      trainer_id,
+      session_status,
+      started_at,
+      completed_at,
+      duration_minutes,
+      archived_at,
+      archived_by,
+      archive_reason,
+      module:training_modules!training_sessions_module_id_fkey(
+        title,
+        department:departments!training_modules_department_id_fkey(name)
+      ),
+      trainee:profiles!training_sessions_trainee_id_fkey(first_name, last_name),
+      trainer:profiles!training_sessions_trainer_id_fkey(first_name, last_name)
+    `)
+    .eq('trainee_id', userId)
     .order('started_at', { ascending: false });
 
   if (error) throw error;

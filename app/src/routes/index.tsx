@@ -22,12 +22,14 @@ import NotFoundPage from '../pages/NotFoundPage';
 import PlaceChartsPage from '../pages/PlaceChartsPage';
 import ReportsPage from '../pages/ReportsPage';
 import SkillsMatrixPage from '../pages/SkillsMatrixPage';
+import TrainingCoveragePage from '../pages/TrainingCoveragePage';
 import TrainingModuleDetailPage from '../pages/TrainingModuleDetailPage';
 import TrainingPage from '../pages/TrainingPage';
 import TrainingRecordsPage from '../pages/TrainingRecordsPage';
 import TrainingSessionRecordPage from '../pages/TrainingSessionRecordPage';
 import TrainingSessionRunnerPage from '../pages/TrainingSessionRunnerPage';
 import UserDetailPage from '../pages/UserDetailPage';
+import UserTrainingProfilePage from '../pages/UserTrainingProfilePage';
 import UsersPage from '../pages/UsersPage';
 
 export const router = createBrowserRouter([
@@ -82,6 +84,7 @@ export const router = createBrowserRouter([
       { path: 'training/conduct', element: <CreateTrainingSessionPage /> },
       { path: 'training/records', element: <TrainingRecordsPage /> },
       { path: 'training/matrix', element: <SkillsMatrixPage /> },
+      { path: 'training/coverage', element: <TrainingCoveragePage /> },
       { path: 'training/:moduleId', element: <TrainingModuleDetailPage /> },
       { path: 'training/:moduleId/edit', element: <EditTrainingModulePage /> },
       { path: 'training/:moduleId/start', element: <CreateTrainingSessionPage /> },
@@ -95,6 +98,7 @@ export const router = createBrowserRouter([
       { path: 'users/new', element: <CreateUserPage /> },
       { path: 'users/:userId', element: <UserDetailPage /> },
       { path: 'users/:userId/edit', element: <EditUserPage /> },
+      { path: 'users/:userId/training', element: <UserTrainingProfilePage /> },
       { path: 'announcements', element: <AnnouncementsPage /> },
       { path: 'reports', element: <ReportsPage /> },
       { path: 'documents', element: <DocumentsPage /> },

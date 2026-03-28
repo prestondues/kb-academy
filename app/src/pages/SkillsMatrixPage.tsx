@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { Link } from 'react-router-dom';
 import ContentCard from '../components/ContentCard';
 import PageContainer from '../components/PageContainer';
 import TrainingSubnav from '../features/training/TrainingSubnav';
@@ -259,7 +260,9 @@ function SkillsMatrixPage() {
                   {filteredUsers.map((user) => (
                     <tr key={user.id}>
                       <td style={stickyUserCellStyle}>
-                        <div style={{ fontWeight: 800 }}>{user.name}</div>
+                        <Link to={`/users/${user.id}/training`} style={nameLinkStyle}>
+                          {user.name}
+                        </Link>
                         <div style={usernameStyle}>@{user.username}</div>
                         <div style={metaRowStyle}>
                           {user.departmentName} • {user.shiftName}
@@ -401,6 +404,12 @@ const stickyUserCellStyle: CSSProperties = {
   padding: '12px 10px',
   borderBottom: `1px solid ${theme.colors.border}`,
   verticalAlign: 'top',
+};
+
+const nameLinkStyle: CSSProperties = {
+  fontWeight: 800,
+  color: '#194f91',
+  textDecoration: 'none',
 };
 
 const usernameStyle: CSSProperties = {

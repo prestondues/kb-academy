@@ -35,6 +35,16 @@ function TrainingSubnav() {
       >
         Skills Matrix
       </NavLink>
+
+      <NavLink
+        to="/training/coverage"
+        style={({ isActive }) => ({
+          ...linkStyle,
+          ...(isActive ? activeLinkStyle : inactiveLinkStyle),
+        })}
+      >
+        Coverage
+      </NavLink>
     </div>
   );
 }
