@@ -1,14 +1,13 @@
-import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
+import { useEffect, useState, type CSSProperties } from 'react';
 import ContentCard from '../components/ContentCard';
 import PageContainer from '../components/PageContainer';
 import PrimaryButton from '../components/PrimaryButton';
-import StatusBadge from '../components/StatusBadge';
-import { deactivateUser, getUserById, type UserRecord } from '../features/users/usersApi';
+import { getUserById } from '../features/users/usersApi';
+import type { UserRecord } from '../features/users/types';
 
 function UserDetailPage() {
   const { userId } = useParams();
-  const navigate = useNavigate();
   const [user, setUser] = useState<UserRecord | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -30,27 +29,10 @@ function UserDetailPage() {
     loadUser();
   }, [userId]);
 
-  async function handleDeactivate() {
-    if (!userId) return;
-
-    const confirmed = window.confirm(
-      'Deactivate this user? They will stop appearing in active user pickers.'
-    );
-    if (!confirmed) return;
-
-    try {
-      await deactivateUser(userId);
-      navigate('/users');
-    } catch (error) {
-      console.error('DEACTIVATE USER ERROR:', error);
-      alert('Failed to deactivate user.');
-    }
-  }
-
   if (loading) {
     return (
       <PageContainer title="Loading user..." subtitle="Please wait.">
-        <ContentCard title="Loading">Fetching user details.</ContentCard>
+        <ContentCard title="Loading">Fetching user record.</ContentCard>
       </PageContainer>
     );
   }
@@ -65,78 +47,74 @@ function UserDetailPage() {
 
   return (
     <PageContainer
-      title={`${user.first_name} ${user.last_name}`}
+      title={`${user.first_name} ${user.last_name}`.trim()}
       subtitle={`@${user.username}`}
       actions={
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <Link to={`/users/${user.id}/edit`} style={{ textDecoration: 'none' }}>
-            <PrimaryButton>Edit User</PrimaryButton>
-          </Link>
-          <button type="button" onClick={handleDeactivate} style={dangerButtonStyle}>
-            Deactivate
-          </button>
-        </div>
+        <Link to={`/users/${user.id}/edit`} style={{ textDecoration: 'none' }}>
+          <PrimaryButton>Edit User</PrimaryButton>
+        </Link>
       }
     >
-      <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 0.8fr', gap: '16px' }}>
-        <ContentCard title="User Overview" subtitle="Employee and account information.">
-          <div style={{ display: 'grid', gap: '12px' }}>
-            <Row label="Full Name" value={`${user.first_name} ${user.last_name}`} />
-            <Row label="Username" value={user.username || '—'} />
-            <Row label="Employee ID" value={user.employee_id || '—'} />
-            <Row label="Email" value={user.email || '—'} />
-            <Row label="Role" value={user.role?.name || '—'} />
-            <Row label="Department" value={user.department?.name || '—'} />
-            <Row label="Shift" value={user.shift?.name || '—'} />
-          </div>
-        </ContentCard>
-
-        <ContentCard title="User Status">
-          <div style={{ display: 'grid', gap: '12px' }}>
-            <StatusBadge
-              label={user.is_active ? 'Active' : 'Inactive'}
-              variant={user.is_active ? 'success' : 'danger'}
-            />
-            <StatusBadge
-              label={user.probationary ? 'Probationary' : 'Standard'}
-              variant={user.probationary ? 'warning' : 'info'}
-            />
-            <StatusBadge
-              label={user.trainer_enabled ? 'Trainer Enabled' : 'Trainer Disabled'}
-              variant={user.trainer_enabled ? 'success' : 'warning'}
-            />
-          </div>
-        </ContentCard>
-      </div>
+      <ContentCard title="User Profile" subtitle="Account and organizational details.">
+        <div style={gridStyle}>
+          <Detail label="Employee ID" value={user.employee_id ?? '—'} />
+          <Detail label="Email" value={user.email ?? '—'} />
+          <Detail label="Role" value={user.role?.name ?? '—'} />
+          <Detail label="Department" value={user.department?.name ?? '—'} />
+          <Detail label="Shift" value={user.shift?.name ?? '—'} />
+          <Detail label="Probationary" value={user.probationary ? 'Yes' : 'No'} />
+          <Detail label="Trainer Enabled" value={user.trainer_enabled ? 'Yes' : 'No'} />
+          <Detail label="Active" value={user.is_active ? 'Yes' : 'No'} />
+          <Detail
+            label="Must Change Password"
+            value={user.must_change_password ? 'Yes' : 'No'}
+          />
+          <Detail label="Must Create PIN" value={user.must_create_pin ? 'Yes' : 'No'} />
+          <Detail
+            label="PIN Reset Required"
+            value={user.pin_reset_required ? 'Yes' : 'No'}
+          />
+        </div>
+      </ContentCard>
     </PageContainer>
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Detail({ label, value }: { label: string; value: string }) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        gap: '16px',
-        paddingBottom: '10px',
-        borderBottom: '1px solid #eef3f8',
-      }}
-    >
-      <span style={{ color: '#5f6b76', fontWeight: 700 }}>{label}</span>
-      <span>{value}</span>
+    <div style={detailCardStyle}>
+      <div style={detailLabelStyle}>{label}</div>
+      <div style={detailValueStyle}>{value}</div>
     </div>
   );
 }
 
-const dangerButtonStyle: React.CSSProperties = {
-  border: '1px solid #f3cccc',
-  background: '#fff7f7',
-  color: '#a12828',
-  borderRadius: '14px',
-  padding: '12px 14px',
+const gridStyle: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+  gap: '14px',
+};
+
+const detailCardStyle: CSSProperties = {
+  padding: '14px',
+  border: '1px solid #dbe4ee',
+  borderRadius: '16px',
+  background: '#ffffff',
+};
+
+const detailLabelStyle: CSSProperties = {
+  fontSize: '12px',
   fontWeight: 700,
-  cursor: 'pointer',
+  textTransform: 'uppercase',
+  letterSpacing: '0.04em',
+  color: '#5f6b76',
+  marginBottom: '6px',
+};
+
+const detailValueStyle: CSSProperties = {
+  fontSize: '15px',
+  fontWeight: 700,
+  color: '#081f2d',
 };
 
 export default UserDetailPage;

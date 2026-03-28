@@ -9,6 +9,9 @@ import {
 import { mapTrainingModuleToCard } from '../features/training/trainingMappers';
 import { mapTrainingSessionToCard } from '../features/training/sessionMappers';
 import type { TrainingSessionCardModel } from '../features/training/sessionTypes';
+import TrainingSubnav from '../features/training/TrainingSubnav';
+import { useAuth } from '../features/auth/useAuth';
+import { canViewAllDepartments, getVisibleDepartmentName } from '../features/auth/visibility';
 import { theme } from '../styles/theme';
 
 type SelectOption = {
@@ -17,6 +20,8 @@ type SelectOption = {
 };
 
 function TrainingRecordsPage() {
+  const { profile } = useAuth();
+
   const [sessions, setSessions] = useState<TrainingSessionCardModel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -24,12 +29,14 @@ function TrainingRecordsPage() {
   const [traineeOptions, setTraineeOptions] = useState<SelectOption[]>([]);
   const [trainerOptions, setTrainerOptions] = useState<SelectOption[]>([]);
   const [moduleOptions, setModuleOptions] = useState<SelectOption[]>([]);
+  const [departmentOptions, setDepartmentOptions] = useState<SelectOption[]>([]);
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [traineeFilter, setTraineeFilter] = useState('All');
   const [trainerFilter, setTrainerFilter] = useState('All');
   const [moduleFilter, setModuleFilter] = useState('All');
+  const [departmentFilter, setDepartmentFilter] = useState('All');
 
   useEffect(() => {
     async function loadData() {
@@ -39,7 +46,17 @@ function TrainingRecordsPage() {
           getTrainingModules(),
         ]);
 
-        const mappedSessions = sessionData.map(mapTrainingSessionToCard);
+        let mappedSessions = sessionData.map(mapTrainingSessionToCard);
+
+        const visibleDepartmentName = getVisibleDepartmentName(profile);
+        const allowAll = canViewAllDepartments(profile);
+
+        if (!allowAll && visibleDepartmentName) {
+          mappedSessions = mappedSessions.filter(
+            (session) => session.departmentName === visibleDepartmentName
+          );
+        }
+
         setSessions(mappedSessions);
 
         const uniqueTrainees = Array.from(
@@ -51,29 +68,26 @@ function TrainingRecordsPage() {
         ).sort();
 
         const uniqueModules = Array.from(
-          new Set(moduleData.map((module) => mapTrainingModuleToCard(module).title))
+          new Set(
+            moduleData
+              .map((module) => mapTrainingModuleToCard(module))
+              .filter((module) => allowAll || module.department === visibleDepartmentName)
+              .map((module) => module.title)
+          )
         ).sort();
 
-        setTraineeOptions(
-          ['All', ...uniqueTrainees].map((name) => ({
-            id: name,
-            name,
-          }))
-        );
+        const uniqueDepartments = Array.from(
+          new Set(mappedSessions.map((s) => s.departmentName))
+        ).sort();
 
-        setTrainerOptions(
-          ['All', ...uniqueTrainers].map((name) => ({
-            id: name,
-            name,
-          }))
-        );
+        setTraineeOptions(['All', ...uniqueTrainees].map((name) => ({ id: name, name })));
+        setTrainerOptions(['All', ...uniqueTrainers].map((name) => ({ id: name, name })));
+        setModuleOptions(['All', ...uniqueModules].map((name) => ({ id: name, name })));
+        setDepartmentOptions(['All', ...uniqueDepartments].map((name) => ({ id: name, name })));
 
-        setModuleOptions(
-          ['All', ...uniqueModules].map((name) => ({
-            id: name,
-            name,
-          }))
-        );
+        if (!allowAll && visibleDepartmentName) {
+          setDepartmentFilter(visibleDepartmentName);
+        }
       } catch (err: unknown) {
         const message =
           err instanceof Error ? err.message : 'Failed to load training records.';
@@ -84,7 +98,7 @@ function TrainingRecordsPage() {
     }
 
     loadData();
-  }, []);
+  }, [profile]);
 
   const filteredSessions = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -94,35 +108,36 @@ function TrainingRecordsPage() {
         term === '' ||
         session.moduleTitle.toLowerCase().includes(term) ||
         session.traineeName.toLowerCase().includes(term) ||
-        session.trainerName.toLowerCase().includes(term);
+        session.trainerName.toLowerCase().includes(term) ||
+        session.departmentName.toLowerCase().includes(term);
 
-      const matchesStatus =
-        statusFilter === 'All' || session.status === statusFilter;
-
-      const matchesTrainee =
-        traineeFilter === 'All' || session.traineeName === traineeFilter;
-
-      const matchesTrainer =
-        trainerFilter === 'All' || session.trainerName === trainerFilter;
-
-      const matchesModule =
-        moduleFilter === 'All' || session.moduleTitle === moduleFilter;
+      const matchesStatus = statusFilter === 'All' || session.status === statusFilter;
+      const matchesTrainee = traineeFilter === 'All' || session.traineeName === traineeFilter;
+      const matchesTrainer = trainerFilter === 'All' || session.trainerName === trainerFilter;
+      const matchesModule = moduleFilter === 'All' || session.moduleTitle === moduleFilter;
+      const matchesDepartment =
+        departmentFilter === 'All' || session.departmentName === departmentFilter;
 
       return (
         matchesSearch &&
         matchesStatus &&
         matchesTrainee &&
         matchesTrainer &&
-        matchesModule
+        matchesModule &&
+        matchesDepartment
       );
     });
-  }, [sessions, search, statusFilter, traineeFilter, trainerFilter, moduleFilter]);
+  }, [sessions, search, statusFilter, traineeFilter, trainerFilter, moduleFilter, departmentFilter]);
+
+  const allowAllDepartments = canViewAllDepartments(profile);
 
   return (
     <PageContainer
-      title="Training Records"
+      title="Training"
       subtitle="Review completed and in-progress training activity with filters."
     >
+      <TrainingSubnav />
+
       <div style={shellStyle}>
         <div style={toolbarStyle}>
           <div style={searchWrapStyle}>
@@ -131,11 +146,18 @@ function TrainingRecordsPage() {
               style={searchInputStyle}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by trainee, trainer, or module"
+              placeholder="Search by trainee, trainer, module, or department"
             />
           </div>
 
-          <div style={filtersGridStyle}>
+          <div
+            style={{
+              ...filtersGridStyle,
+              gridTemplateColumns: allowAllDepartments
+                ? 'repeat(5, minmax(0, 1fr))'
+                : 'repeat(4, minmax(0, 1fr))',
+            }}
+          >
             <FilterSelect
               label="Status"
               value={statusFilter}
@@ -160,6 +182,14 @@ function TrainingRecordsPage() {
               onChange={setModuleFilter}
               options={moduleOptions.map((o) => o.name)}
             />
+            {allowAllDepartments ? (
+              <FilterSelect
+                label="Department"
+                value={departmentFilter}
+                onChange={setDepartmentFilter}
+                options={departmentOptions.map((o) => o.name)}
+              />
+            ) : null}
           </div>
         </div>
 
@@ -179,6 +209,7 @@ function TrainingRecordsPage() {
                 <thead>
                   <tr>
                     <th style={thStyle}>Module</th>
+                    <th style={thStyle}>Department</th>
                     <th style={thStyle}>Trainee</th>
                     <th style={thStyle}>Trainer</th>
                     <th style={thStyle}>Status</th>
@@ -192,6 +223,7 @@ function TrainingRecordsPage() {
                   {filteredSessions.map((session) => (
                     <tr key={session.id}>
                       <td style={tdStyle}>{session.moduleTitle}</td>
+                      <td style={tdStyle}>{session.departmentName}</td>
                       <td style={tdStyle}>{session.traineeName}</td>
                       <td style={tdStyle}>{session.trainerName}</td>
                       <td style={tdStyle}>{session.status}</td>
@@ -285,7 +317,6 @@ const searchInputStyle: CSSProperties = {
 
 const filtersGridStyle: CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
   gap: '12px',
 };
 

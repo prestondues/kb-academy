@@ -1,41 +1,48 @@
-export type UserRole =
-  | 'Admin'
-  | 'Manager'
-  | 'Supervisor'
-  | 'Team Lead'
-  | 'Operator'
-  | 'Trainer'
-  | 'Team Member'
-  | 'FSQA'
-  | 'People Services';
-
-export type Department =
-  | 'Packaging'
-  | 'Baking'
-  | 'FSQA'
-  | 'People Services';
-
-export type Shift =
-  | 'Packaging 1st Shift'
-  | 'Baking 1st Shift'
-  | 'Baking 3rd Shift';
-
-export type UserStatus = 'Active' | 'Inactive';
-
-export type AppUser = {
+export type UserRecord = {
   id: string;
-  firstName: string;
-  lastName: string;
+  first_name: string;
+  last_name: string;
+  username: string;
+  employee_id?: string | null;
+  email?: string | null;
+  probationary?: boolean | null;
+  trainer_enabled?: boolean | null;
+  is_active: boolean;
+  must_change_password?: boolean | null;
+  must_create_pin?: boolean | null;
+  pin_reset_required?: boolean | null;
+  role_id?: string | null;
+  department_id?: string | null;
+  shift_id?: string | null;
+  role?: {
+    id?: string | null;
+    name?: string | null;
+  } | null;
+  department?: {
+    id?: string | null;
+    name?: string | null;
+  } | null;
+  shift?: {
+    id?: string | null;
+    name?: string | null;
+  } | null;
+};
+
+export type UserCardModel = {
+  id: string;
   fullName: string;
   username: string;
-  role: UserRole;
-  homeDepartment: Department;
-  shift: Shift;
-  status: UserStatus;
   employeeId: string;
-  hireDate: string;
-  birthday: string;
+  email: string;
+  roleName: string;
+  departmentName: string;
+  shiftName: string;
   probationary: boolean;
   trainerEnabled: boolean;
-  email?: string;
+  status: 'Active' | 'Inactive';
+};
+
+export type LookupOption = {
+  id: string;
+  name: string;
 };

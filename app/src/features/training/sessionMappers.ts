@@ -30,6 +30,7 @@ export function mapTrainingSessionToCard(
   return {
     id: session.id,
     moduleTitle: session.module?.title ?? 'Untitled Module',
+    departmentName: session.module?.department?.name ?? '—',
     traineeName,
     trainerName,
     status: session.session_status === 'completed' ? 'Completed' : 'In Progress',

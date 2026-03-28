@@ -13,6 +13,7 @@ import { mapTrainingSessionToCard } from '../features/training/sessionMappers';
 import type { TrainingModuleCardModel } from '../features/training/types';
 import type { TrainingSessionCardModel } from '../features/training/sessionTypes';
 import TrainingModuleCard from '../features/training/TrainingModuleCard';
+import TrainingSubnav from '../features/training/TrainingSubnav';
 import { theme } from '../styles/theme';
 
 function TrainingPage() {
@@ -97,6 +98,8 @@ function TrainingPage() {
         </div>
       }
     >
+      <TrainingSubnav />
+
       <div style={pageGridStyle}>
         <div style={leftColumnStyle}>
           <div style={toolbarShellStyle}>
@@ -220,7 +223,7 @@ function TrainingPage() {
                     key={session.id}
                     session={session}
                     actionLabel="View"
-                    actionTo={`/training/sessions/${session.id}`}
+                    actionTo={`/training/sessions/${session.id}/view`}
                     showCompletedDate
                   />
                 ))}

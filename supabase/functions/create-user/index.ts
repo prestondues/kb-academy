@@ -8,6 +8,11 @@ const corsHeaders = {
   'Content-Type': 'application/json',
 }
 
+function buildInternalAuthEmail(username: string) {
+  const cleaned = username.trim().toLowerCase().replace(/\s+/g, '.')
+  return `${cleaned}@kbacademy.local`
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', {
@@ -42,7 +47,12 @@ serve(async (req) => {
       String(body.employee_id).trim() !== ''
         ? String(body.employee_id).trim()
         : null
-    const email = String(body.email ?? '').trim().toLowerCase()
+    const contactEmail =
+      body.email !== undefined &&
+      body.email !== null &&
+      String(body.email).trim() !== ''
+        ? String(body.email).trim().toLowerCase()
+        : null
     const password = String(body.password ?? '')
     const roleId =
       body.role_id !== undefined &&
@@ -50,20 +60,68 @@ serve(async (req) => {
       String(body.role_id).trim() !== ''
         ? String(body.role_id).trim()
         : null
+    const departmentId =
+      body.department_id !== undefined &&
+      body.department_id !== null &&
+      String(body.department_id).trim() !== ''
+        ? String(body.department_id).trim()
+        : null
+    const shiftId =
+      body.shift_id !== undefined &&
+      body.shift_id !== null &&
+      String(body.shift_id).trim() !== ''
+        ? String(body.shift_id).trim()
+        : null
     const probationary = Boolean(body.probationary)
     const trainerEnabled = Boolean(body.trainer_enabled)
 
-    if (!firstName || !lastName || !username || !email || !password) {
-      return new Response(
-        JSON.stringify({
-          error:
-            'Missing required fields: first_name, last_name, username, email, password',
-        }),
-        {
-          status: 400,
-          headers: corsHeaders,
-        }
-      )
+    if (!firstName) {
+      return new Response(JSON.stringify({ error: 'First name is required.' }), {
+        status: 400,
+        headers: corsHeaders,
+      })
+    }
+
+    if (!lastName) {
+      return new Response(JSON.stringify({ error: 'Last name is required.' }), {
+        status: 400,
+        headers: corsHeaders,
+      })
+    }
+
+    if (!username) {
+      return new Response(JSON.stringify({ error: 'Username is required.' }), {
+        status: 400,
+        headers: corsHeaders,
+      })
+    }
+
+    if (!password) {
+      return new Response(JSON.stringify({ error: 'Temporary password is required.' }), {
+        status: 400,
+        headers: corsHeaders,
+      })
+    }
+
+    if (!roleId) {
+      return new Response(JSON.stringify({ error: 'Role is required.' }), {
+        status: 400,
+        headers: corsHeaders,
+      })
+    }
+
+    if (!departmentId) {
+      return new Response(JSON.stringify({ error: 'Department is required.' }), {
+        status: 400,
+        headers: corsHeaders,
+      })
+    }
+
+    if (!shiftId) {
+      return new Response(JSON.stringify({ error: 'Shift is required.' }), {
+        status: 400,
+        headers: corsHeaders,
+      })
     }
 
     const { data: existingUsername, error: usernameError } = await supabase
@@ -84,7 +142,7 @@ serve(async (req) => {
 
     if (existingUsername) {
       return new Response(
-        JSON.stringify({ error: 'Username already exists' }),
+        JSON.stringify({ error: 'Username already exists.' }),
         {
           status: 400,
           headers: corsHeaders,
@@ -92,9 +150,11 @@ serve(async (req) => {
       )
     }
 
+    const authEmail = buildInternalAuthEmail(username)
+
     const { data: authData, error: authError } =
       await supabase.auth.admin.createUser({
-        email,
+        email: authEmail,
         password,
         email_confirm: true,
         user_metadata: {
@@ -107,7 +167,7 @@ serve(async (req) => {
     if (authError || !authData.user) {
       return new Response(
         JSON.stringify({
-          error: authError?.message ?? 'Failed to create auth user',
+          error: authError?.message ?? 'Failed to create auth user.',
         }),
         {
           status: 400,
@@ -124,8 +184,10 @@ serve(async (req) => {
       last_name: lastName,
       username,
       employee_id: employeeId,
-      email,
+      email: contactEmail,
       role_id: roleId,
+      department_id: departmentId,
+      shift_id: shiftId,
       probationary,
       trainer_enabled: trainerEnabled,
       is_active: true,
@@ -151,8 +213,9 @@ serve(async (req) => {
         success: true,
         user: {
           id: userId,
-          email,
           username,
+          auth_email: authEmail,
+          contact_email: contactEmail,
         },
       }),
       {
@@ -163,7 +226,7 @@ serve(async (req) => {
   } catch (error) {
     return new Response(
       JSON.stringify({
-        error: error instanceof Error ? error.message : 'Unexpected error',
+        error: error instanceof Error ? error.message : 'Unexpected error.',
       }),
       {
         status: 500,

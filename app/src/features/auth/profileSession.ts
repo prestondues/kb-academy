@@ -9,9 +9,17 @@ export type CurrentProfile = {
   must_create_pin: boolean;
   pin_reset_required: boolean;
   is_active: boolean;
-  role: {
-    id: string;
-    name: string;
+  role?: {
+    id?: string | null;
+    name?: string | null;
+  } | null;
+  department?: {
+    id?: string | null;
+    name?: string | null;
+  } | null;
+  shift?: {
+    id?: string | null;
+    name?: string | null;
   } | null;
 };
 
@@ -27,10 +35,9 @@ export async function getCurrentProfile(userId: string): Promise<CurrentProfile 
       must_create_pin,
       pin_reset_required,
       is_active,
-      role:roles!profiles_role_id_fkey(
-        id,
-        name
-      )
+      role:roles(id, name),
+      department:departments!profiles_department_id_fkey(id, name),
+      shift:shifts!profiles_shift_id_fkey(id, name)
     `)
     .eq('id', userId)
     .maybeSingle();

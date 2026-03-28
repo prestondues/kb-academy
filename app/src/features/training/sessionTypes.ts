@@ -12,6 +12,9 @@ export type TrainingSessionRecord = {
   archive_reason?: string | null;
   module?: {
     title?: string | null;
+    department?: {
+      name?: string | null;
+    } | null;
   } | null;
   trainee?: {
     first_name?: string | null;
@@ -34,6 +37,7 @@ export type TrainingSessionProgressRecord = {
 export type TrainingSessionCardModel = {
   id: string;
   moduleTitle: string;
+  departmentName: string;
   traineeName: string;
   trainerName: string;
   status: 'In Progress' | 'Completed';

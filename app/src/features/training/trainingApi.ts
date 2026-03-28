@@ -31,6 +31,22 @@ type TrainingCertificationRecord = {
   updated_at?: string | null;
 };
 
+type ProfileMatrixRecord = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  username: string;
+  is_active: boolean;
+  department?: {
+    id?: string | null;
+    name?: string | null;
+  } | null;
+  shift?: {
+    id?: string | null;
+    name?: string | null;
+  } | null;
+};
+
 export async function getTrainingModules(): Promise<TrainingModuleRecord[]> {
   const { data, error } = await supabase
     .from('training_modules')
@@ -135,6 +151,43 @@ export async function getTrainerOptions(): Promise<SelectOption[]> {
     id: profile.id,
     name: `${profile.first_name} ${profile.last_name} (@${profile.username})`,
   }));
+}
+
+export async function getMatrixUsers(): Promise<ProfileMatrixRecord[]> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select(`
+      id,
+      first_name,
+      last_name,
+      username,
+      is_active,
+      department:departments!profiles_department_id_fkey(id, name),
+      shift:shifts!profiles_shift_id_fkey(id, name)
+    `)
+    .eq('is_active', true)
+    .order('last_name', { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []) as ProfileMatrixRecord[];
+}
+
+export async function getTrainingCertifications(): Promise<TrainingCertificationRecord[]> {
+  const { data, error } = await supabase
+    .from('training_certifications')
+    .select(`
+      id,
+      trainee_id,
+      module_id,
+      issued_at,
+      expires_at,
+      last_session_id,
+      created_at,
+      updated_at
+    `);
+
+  if (error) throw error;
+  return (data ?? []) as TrainingCertificationRecord[];
 }
 
 type CreateTrainingModuleInput = {
@@ -395,7 +448,10 @@ export async function getTrainingSessionById(
       archived_at,
       archived_by,
       archive_reason,
-      module:training_modules!training_sessions_module_id_fkey(title),
+      module:training_modules!training_sessions_module_id_fkey(
+        title,
+        department:departments!training_modules_department_id_fkey(name)
+      ),
       trainee:profiles!training_sessions_trainee_id_fkey(first_name, last_name),
       trainer:profiles!training_sessions_trainer_id_fkey(first_name, last_name)
     `)
@@ -573,7 +629,10 @@ export async function getInProgressTrainingSessions(): Promise<TrainingSessionRe
       archived_at,
       archived_by,
       archive_reason,
-      module:training_modules!training_sessions_module_id_fkey(title),
+      module:training_modules!training_sessions_module_id_fkey(
+        title,
+        department:departments!training_modules_department_id_fkey(name)
+      ),
       trainee:profiles!training_sessions_trainee_id_fkey(first_name, last_name),
       trainer:profiles!training_sessions_trainer_id_fkey(first_name, last_name)
     `)
@@ -600,7 +659,10 @@ export async function getCompletedTrainingSessions(): Promise<TrainingSessionRec
       archived_at,
       archived_by,
       archive_reason,
-      module:training_modules!training_sessions_module_id_fkey(title),
+      module:training_modules!training_sessions_module_id_fkey(
+        title,
+        department:departments!training_modules_department_id_fkey(name)
+      ),
       trainee:profiles!training_sessions_trainee_id_fkey(first_name, last_name),
       trainer:profiles!training_sessions_trainer_id_fkey(first_name, last_name)
     `)
@@ -628,7 +690,10 @@ export async function getAllTrainingSessions(): Promise<TrainingSessionRecord[]>
       archived_at,
       archived_by,
       archive_reason,
-      module:training_modules!training_sessions_module_id_fkey(title),
+      module:training_modules!training_sessions_module_id_fkey(
+        title,
+        department:departments!training_modules_department_id_fkey(name)
+      ),
       trainee:profiles!training_sessions_trainee_id_fkey(first_name, last_name),
       trainer:profiles!training_sessions_trainer_id_fkey(first_name, last_name)
     `)

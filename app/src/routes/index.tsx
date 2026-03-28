@@ -21,6 +21,7 @@ import LoginPage from '../pages/LoginPage';
 import NotFoundPage from '../pages/NotFoundPage';
 import PlaceChartsPage from '../pages/PlaceChartsPage';
 import ReportsPage from '../pages/ReportsPage';
+import SkillsMatrixPage from '../pages/SkillsMatrixPage';
 import TrainingModuleDetailPage from '../pages/TrainingModuleDetailPage';
 import TrainingPage from '../pages/TrainingPage';
 import TrainingRecordsPage from '../pages/TrainingRecordsPage';
@@ -80,6 +81,7 @@ export const router = createBrowserRouter([
       { path: 'training/new', element: <CreateTrainingModulePage /> },
       { path: 'training/conduct', element: <CreateTrainingSessionPage /> },
       { path: 'training/records', element: <TrainingRecordsPage /> },
+      { path: 'training/matrix', element: <SkillsMatrixPage /> },
       { path: 'training/:moduleId', element: <TrainingModuleDetailPage /> },
       { path: 'training/:moduleId/edit', element: <EditTrainingModulePage /> },
       { path: 'training/:moduleId/start', element: <CreateTrainingSessionPage /> },
