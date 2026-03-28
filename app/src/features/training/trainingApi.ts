@@ -61,6 +61,38 @@ export type TrainingCoverageTargetRecord = {
   } | null;
 };
 
+export type TrainingTimeEntryRecord = {
+  id: string;
+  trainee_id: string;
+  module_id: string;
+  session_id?: string | null;
+  trainer_id?: string | null;
+  entry_date: string;
+  minutes_logged: number;
+  notes?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  module?: {
+    id?: string | null;
+    title?: string | null;
+  } | null;
+  trainer?: {
+    first_name?: string | null;
+    last_name?: string | null;
+  } | null;
+};
+
+export type TrainingHourProgressRecord = {
+  moduleId: string;
+  moduleTitle: string;
+  requiredHours: number;
+  loggedMinutes: number;
+  loggedHours: number;
+  remainingMinutes: number;
+  remainingHours: number;
+  percentComplete: number;
+};
+
 type ProfileMatrixRecord = {
   id: string;
   first_name: string;
@@ -398,6 +430,96 @@ export async function deleteTrainingCoverageTarget(id: string) {
 
   if (error) throw error;
   return data as TrainingCoverageTargetRecord;
+}
+
+export async function getTrainingTimeEntriesByUser(
+  userId: string
+): Promise<TrainingTimeEntryRecord[]> {
+  const { data, error } = await supabase
+    .from('training_time_entries')
+    .select(`
+      id,
+      trainee_id,
+      module_id,
+      session_id,
+      trainer_id,
+      entry_date,
+      minutes_logged,
+      notes,
+      created_at,
+      updated_at,
+      module:training_modules!training_time_entries_module_id_fkey(id, title),
+      trainer:profiles!training_time_entries_trainer_id_fkey(first_name, last_name)
+    `)
+    .eq('trainee_id', userId)
+    .order('entry_date', { ascending: false })
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []) as TrainingTimeEntryRecord[];
+}
+
+export async function createTrainingTimeEntry(input: {
+  trainee_id: string;
+  module_id: string;
+  session_id?: string | null;
+  trainer_id?: string | null;
+  entry_date?: string;
+  minutes_logged: number;
+  notes?: string | null;
+}) {
+  const { data, error } = await supabase
+    .from('training_time_entries')
+    .insert({
+      trainee_id: input.trainee_id,
+      module_id: input.module_id,
+      session_id: input.session_id ?? null,
+      trainer_id: input.trainer_id ?? null,
+      entry_date: input.entry_date ?? new Date().toISOString().slice(0, 10),
+      minutes_logged: input.minutes_logged,
+      notes: input.notes ?? null,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as TrainingTimeEntryRecord;
+}
+
+export async function getTrainingHourProgressByUser(
+  userId: string
+): Promise<TrainingHourProgressRecord[]> {
+  const [modules, entries] = await Promise.all([
+    getTrainingModules(),
+    getTrainingTimeEntriesByUser(userId),
+  ]);
+
+  const timeBasedModules = modules.filter((module) => module.module_type === 'time_based');
+
+  return timeBasedModules.map((module) => {
+    const loggedMinutes = entries
+      .filter((entry) => entry.module_id === module.id)
+      .reduce((sum, entry) => sum + (entry.minutes_logged ?? 0), 0);
+
+    const requiredHours = Number(module.required_hours ?? 0);
+    const requiredMinutes = Math.max(0, Math.round(requiredHours * 60));
+    const remainingMinutes = Math.max(requiredMinutes - loggedMinutes, 0);
+    const percentComplete =
+      requiredMinutes > 0
+        ? Math.min(100, Math.round((loggedMinutes / requiredMinutes) * 100))
+        : 0;
+
+    return {
+      moduleId: module.id,
+      moduleTitle: module.title,
+      requiredHours,
+      loggedMinutes,
+      loggedHours: Number((loggedMinutes / 60).toFixed(2)),
+      remainingMinutes,
+      remainingHours: Number((remainingMinutes / 60).toFixed(2)),
+      percentComplete,
+    };
+  });
 }
 
 type CreateTrainingModuleInput = {
@@ -785,6 +907,22 @@ export async function completeTrainingSession(sessionId: string) {
     .single();
 
   if (error) throw error;
+
+  if (durationMinutes && durationMinutes > 0) {
+    const module = await getTrainingModuleById(session.module_id);
+
+    if (module?.module_type === 'time_based') {
+      await createTrainingTimeEntry({
+        trainee_id: session.trainee_id,
+        module_id: session.module_id,
+        session_id: sessionId,
+        trainer_id: session.trainer_id,
+        entry_date: completedAt.slice(0, 10),
+        minutes_logged: durationMinutes,
+        notes: 'Auto-logged from completed training session.',
+      });
+    }
+  }
 
   const module = await getTrainingModuleById(session.module_id);
 

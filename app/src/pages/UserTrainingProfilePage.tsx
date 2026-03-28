@@ -6,14 +6,16 @@ import PrimaryButton from '../components/PrimaryButton';
 import {
   getTrainingCertificationsByUser,
   getTrainingSessionsByUser,
+  getTrainingHourProgressByUser,
+  getTrainingTimeEntriesByUser,
   getUserTrainingProfile,
+  type TrainingCertificationRecord,
+  type TrainingHourProgressRecord,
+  type TrainingTimeEntryRecord,
+  type UserTrainingProfileRecord,
 } from '../features/training/trainingApi';
 import { mapTrainingSessionToCard } from '../features/training/sessionMappers';
 import type { TrainingSessionCardModel } from '../features/training/sessionTypes';
-import type {
-  TrainingCertificationRecord,
-  UserTrainingProfileRecord,
-} from '../features/training/trainingApi';
 import TrainingSubnav from '../features/training/TrainingSubnav';
 import { theme } from '../styles/theme';
 
@@ -23,6 +25,8 @@ function UserTrainingProfilePage() {
   const [user, setUser] = useState<UserTrainingProfileRecord | null>(null);
   const [certifications, setCertifications] = useState<TrainingCertificationRecord[]>([]);
   const [sessions, setSessions] = useState<TrainingSessionCardModel[]>([]);
+  const [hourProgress, setHourProgress] = useState<TrainingHourProgressRecord[]>([]);
+  const [timeEntries, setTimeEntries] = useState<TrainingTimeEntryRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,15 +35,20 @@ function UserTrainingProfilePage() {
       if (!userId) return;
 
       try {
-        const [userData, certificationData, sessionData] = await Promise.all([
-          getUserTrainingProfile(userId),
-          getTrainingCertificationsByUser(userId),
-          getTrainingSessionsByUser(userId),
-        ]);
+        const [userData, certificationData, sessionData, progressData, timeEntryData] =
+          await Promise.all([
+            getUserTrainingProfile(userId),
+            getTrainingCertificationsByUser(userId),
+            getTrainingSessionsByUser(userId),
+            getTrainingHourProgressByUser(userId),
+            getTrainingTimeEntriesByUser(userId),
+          ]);
 
         setUser(userData);
         setCertifications(certificationData);
         setSessions(sessionData.map(mapTrainingSessionToCard));
+        setHourProgress(progressData);
+        setTimeEntries(timeEntryData);
       } catch (err: unknown) {
         const message =
           err instanceof Error ? err.message : 'Failed to load user training profile.';
@@ -92,7 +101,10 @@ function UserTrainingProfilePage() {
 
   if (error || !user) {
     return (
-      <PageContainer title="Training profile unavailable" subtitle="The requested user could not be loaded.">
+      <PageContainer
+        title="Training profile unavailable"
+        subtitle="The requested user could not be loaded."
+      >
         <ContentCard title="Unavailable">{error ?? 'User not found.'}</ContentCard>
       </PageContainer>
     );
@@ -123,6 +135,39 @@ function UserTrainingProfilePage() {
               <SummaryItem label="Probationary" value={user.probationary ? 'Yes' : 'No'} />
               <SummaryItem label="Active" value={user.is_active ? 'Yes' : 'No'} />
             </div>
+          </ContentCard>
+
+          <ContentCard
+            title="Hours Progress"
+            subtitle={`${hourProgress.length} time-based module${hourProgress.length === 1 ? '' : 's'}`}
+          >
+            {hourProgress.length === 0 ? (
+              <div style={emptyStyle}>No time-based module progress found.</div>
+            ) : (
+              <div style={listStyle}>
+                {hourProgress.map((item) => (
+                  <div key={item.moduleId} style={progressCardStyle}>
+                    <div style={progressTopRowStyle}>
+                      <div>
+                        <div style={recordTitleStyle}>{item.moduleTitle}</div>
+                        <div style={recordMetaStyle}>
+                          {item.loggedHours}h logged • {item.requiredHours}h required • {item.remainingHours}h remaining
+                        </div>
+                      </div>
+                      <div style={percentPillStyle}>{item.percentComplete}%</div>
+                    </div>
+                    <div style={progressBarTrackStyle}>
+                      <div
+                        style={{
+                          ...progressBarFillStyle,
+                          width: `${item.percentComplete}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </ContentCard>
 
           <ContentCard
@@ -221,6 +266,32 @@ function UserTrainingProfilePage() {
             )}
           </ContentCard>
 
+          <ContentCard
+            title="Recent Time Entries"
+            subtitle={`${timeEntries.length} logged entry${timeEntries.length === 1 ? '' : 'ies'}`}
+          >
+            {timeEntries.length === 0 ? (
+              <div style={emptyStyle}>No time entries found.</div>
+            ) : (
+              <div style={listStyle}>
+                {timeEntries.slice(0, 8).map((entry) => (
+                  <div key={entry.id} style={certCardStyle}>
+                    <div style={recordTitleStyle}>{entry.module?.title ?? 'Untitled Module'}</div>
+                    <div style={recordMetaStyle}>
+                      {formatDate(entry.entry_date)} • {Number((entry.minutes_logged / 60).toFixed(2))}h
+                    </div>
+                    <div style={recordMetaStyle}>
+                      Trainer:{' '}
+                      {`${entry.trainer?.first_name ?? ''} ${entry.trainer?.last_name ?? ''}`.trim() ||
+                        '—'}
+                    </div>
+                    {entry.notes ? <div style={recordMetaStyle}>{entry.notes}</div> : null}
+                  </div>
+                ))}
+              </div>
+            )}
+          </ContentCard>
+
           <ContentCard title="Quiz History" subtitle="Placeholder for upcoming quiz engine.">
             <div style={emptyStyle}>
               Quiz history will appear here once module quizzes are built.
@@ -253,6 +324,19 @@ function formatDateTime(value?: string | null) {
     year: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
+  });
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return '—';
+
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return date.toLocaleDateString([], {
+    month: '2-digit',
+    day: '2-digit',
+    year: 'numeric',
   });
 }
 
@@ -310,6 +394,47 @@ const certCardStyle: CSSProperties = {
   borderRadius: '16px',
   padding: '14px',
   background: '#ffffff',
+};
+
+const progressCardStyle: CSSProperties = {
+  border: `1px solid ${theme.colors.border}`,
+  borderRadius: '16px',
+  padding: '14px',
+  background: '#ffffff',
+};
+
+const progressTopRowStyle: CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  gap: '12px',
+  alignItems: 'flex-start',
+  marginBottom: '12px',
+};
+
+const progressBarTrackStyle: CSSProperties = {
+  width: '100%',
+  height: '10px',
+  borderRadius: '999px',
+  background: '#eef3f8',
+  overflow: 'hidden',
+};
+
+const progressBarFillStyle: CSSProperties = {
+  height: '100%',
+  borderRadius: '999px',
+  background: '#194f91',
+};
+
+const percentPillStyle: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: '8px 10px',
+  borderRadius: '999px',
+  background: '#eef6ff',
+  color: '#194f91',
+  fontWeight: 800,
+  fontSize: '12px',
 };
 
 const recordTitleStyle: CSSProperties = {
