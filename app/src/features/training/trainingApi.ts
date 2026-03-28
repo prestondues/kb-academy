@@ -82,6 +82,40 @@ export type TrainingTimeEntryRecord = {
   } | null;
 };
 
+export type TrainingTimeLogRecord = {
+  id: string;
+  trainee_id: string;
+  module_id: string;
+  trainer_id: string;
+  entry_date: string;
+  minutes_logged: number;
+  notes?: string | null;
+  log_status: 'pending' | 'completed' | 'voided';
+  official_time_entry_id?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  module?: {
+    id?: string | null;
+    title?: string | null;
+  } | null;
+  trainee?: {
+    first_name?: string | null;
+    last_name?: string | null;
+  } | null;
+  trainer?: {
+    first_name?: string | null;
+    last_name?: string | null;
+  } | null;
+};
+
+export type TrainingTimeLogSignoffRecord = {
+  id: string;
+  time_log_id: string;
+  signer_id: string;
+  signer_role: 'trainer' | 'trainee';
+  signed_at: string;
+};
+
 export type TrainingHourProgressRecord = {
   moduleId: string;
   moduleTitle: string;
@@ -484,6 +518,208 @@ export async function createTrainingTimeEntry(input: {
 
   if (error) throw error;
   return data as TrainingTimeEntryRecord;
+}
+
+export async function getTrainingTimeLogs(): Promise<TrainingTimeLogRecord[]> {
+  const { data, error } = await supabase
+    .from('training_time_logs')
+    .select(`
+      id,
+      trainee_id,
+      module_id,
+      trainer_id,
+      entry_date,
+      minutes_logged,
+      notes,
+      log_status,
+      official_time_entry_id,
+      created_at,
+      updated_at,
+      module:training_modules!training_time_logs_module_id_fkey(id, title),
+      trainee:profiles!training_time_logs_trainee_id_fkey(first_name, last_name),
+      trainer:profiles!training_time_logs_trainer_id_fkey(first_name, last_name)
+    `)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []) as TrainingTimeLogRecord[];
+}
+
+export async function getTrainingTimeLogsByUser(
+  userId: string
+): Promise<TrainingTimeLogRecord[]> {
+  const { data, error } = await supabase
+    .from('training_time_logs')
+    .select(`
+      id,
+      trainee_id,
+      module_id,
+      trainer_id,
+      entry_date,
+      minutes_logged,
+      notes,
+      log_status,
+      official_time_entry_id,
+      created_at,
+      updated_at,
+      module:training_modules!training_time_logs_module_id_fkey(id, title),
+      trainee:profiles!training_time_logs_trainee_id_fkey(first_name, last_name),
+      trainer:profiles!training_time_logs_trainer_id_fkey(first_name, last_name)
+    `)
+    .eq('trainee_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []) as TrainingTimeLogRecord[];
+}
+
+export async function getTrainingTimeLogById(
+  logId: string
+): Promise<TrainingTimeLogRecord | null> {
+  const { data, error } = await supabase
+    .from('training_time_logs')
+    .select(`
+      id,
+      trainee_id,
+      module_id,
+      trainer_id,
+      entry_date,
+      minutes_logged,
+      notes,
+      log_status,
+      official_time_entry_id,
+      created_at,
+      updated_at,
+      module:training_modules!training_time_logs_module_id_fkey(id, title),
+      trainee:profiles!training_time_logs_trainee_id_fkey(first_name, last_name),
+      trainer:profiles!training_time_logs_trainer_id_fkey(first_name, last_name)
+    `)
+    .eq('id', logId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return (data ?? null) as TrainingTimeLogRecord | null;
+}
+
+export async function createTrainingTimeLog(input: {
+  trainee_id: string;
+  module_id: string;
+  trainer_id: string;
+  entry_date?: string;
+  minutes_logged: number;
+  notes?: string | null;
+}) {
+  const { data, error } = await supabase
+    .from('training_time_logs')
+    .insert({
+      trainee_id: input.trainee_id,
+      module_id: input.module_id,
+      trainer_id: input.trainer_id,
+      entry_date: input.entry_date ?? new Date().toISOString().slice(0, 10),
+      minutes_logged: input.minutes_logged,
+      notes: input.notes ?? null,
+      log_status: 'pending',
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as TrainingTimeLogRecord;
+}
+
+export async function voidTrainingTimeLog(logId: string) {
+  const { data, error } = await supabase
+    .from('training_time_logs')
+    .update({
+      log_status: 'voided',
+    })
+    .eq('id', logId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as TrainingTimeLogRecord;
+}
+
+export async function getTrainingTimeLogSignoffs(
+  logId: string
+): Promise<TrainingTimeLogSignoffRecord[]> {
+  const { data, error } = await supabase
+    .from('training_time_log_signoffs')
+    .select(`
+      id,
+      time_log_id,
+      signer_id,
+      signer_role,
+      signed_at
+    `)
+    .eq('time_log_id', logId);
+
+  if (error) throw error;
+  return (data ?? []) as TrainingTimeLogSignoffRecord[];
+}
+
+export async function createTrainingTimeLogSignoff(input: {
+  time_log_id: string;
+  signer_id: string;
+  signer_role: 'trainer' | 'trainee';
+}) {
+  const { data, error } = await supabase
+    .from('training_time_log_signoffs')
+    .insert({
+      time_log_id: input.time_log_id,
+      signer_id: input.signer_id,
+      signer_role: input.signer_role,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as TrainingTimeLogSignoffRecord;
+}
+
+export async function finalizeTrainingTimeLog(logId: string) {
+  const [log, signoffs] = await Promise.all([
+    getTrainingTimeLogById(logId),
+    getTrainingTimeLogSignoffs(logId),
+  ]);
+
+  if (!log) {
+    throw new Error('Training time log not found.');
+  }
+
+  if (log.log_status !== 'pending') {
+    throw new Error('Only pending time logs can be finalized.');
+  }
+
+  const hasTrainerSignoff = signoffs.some((item) => item.signer_role === 'trainer');
+  const hasTraineeSignoff = signoffs.some((item) => item.signer_role === 'trainee');
+
+  if (!hasTrainerSignoff || !hasTraineeSignoff) {
+    throw new Error('Both trainer and trainee signoff are required.');
+  }
+
+  const officialEntry = await createTrainingTimeEntry({
+    trainee_id: log.trainee_id,
+    module_id: log.module_id,
+    trainer_id: log.trainer_id,
+    entry_date: log.entry_date,
+    minutes_logged: log.minutes_logged,
+    notes: log.notes ?? 'Manual training time log.',
+  });
+
+  const { data, error } = await supabase
+    .from('training_time_logs')
+    .update({
+      log_status: 'completed',
+      official_time_entry_id: officialEntry.id,
+    })
+    .eq('id', logId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as TrainingTimeLogRecord;
 }
 
 export async function getTrainingHourProgressByUser(

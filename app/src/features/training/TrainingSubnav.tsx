@@ -45,6 +45,16 @@ function TrainingSubnav() {
       >
         Coverage
       </NavLink>
+
+      <NavLink
+        to="/training/time-logs"
+        style={({ isActive }) => ({
+          ...linkStyle,
+          ...(isActive ? activeLinkStyle : inactiveLinkStyle),
+        })}
+      >
+        Time Logs
+      </NavLink>
     </div>
   );
 }

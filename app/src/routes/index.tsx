@@ -18,6 +18,7 @@ import EditTrainingModulePage from '../pages/EditTrainingModulePage';
 import EditTrainingSectionPage from '../pages/EditTrainingSectionPage';
 import EditUserPage from '../pages/EditUserPage';
 import LoginPage from '../pages/LoginPage';
+import ManualTimeLogPage from '../pages/ManualTimeLogPage';
 import NotFoundPage from '../pages/NotFoundPage';
 import PlaceChartsPage from '../pages/PlaceChartsPage';
 import ReportsPage from '../pages/ReportsPage';
@@ -85,6 +86,7 @@ export const router = createBrowserRouter([
       { path: 'training/records', element: <TrainingRecordsPage /> },
       { path: 'training/matrix', element: <SkillsMatrixPage /> },
       { path: 'training/coverage', element: <TrainingCoveragePage /> },
+      { path: 'training/time-logs', element: <ManualTimeLogPage /> },
       { path: 'training/:moduleId', element: <TrainingModuleDetailPage /> },
       { path: 'training/:moduleId/edit', element: <EditTrainingModulePage /> },
       { path: 'training/:moduleId/start', element: <CreateTrainingSessionPage /> },
