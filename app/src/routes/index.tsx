@@ -6,6 +6,8 @@ import AppLayout from '../layouts/AppLayout';
 import AdminPage from '../pages/AdminPage';
 import AnnouncementsPage from '../pages/AnnouncementsPage';
 import CertificationsPage from '../pages/CertificationsPage';
+import StartCertificationPage from '../pages/StartCertificationPage';
+import CertificationQuizRunnerPage from '../pages/CertificationQuizRunnerPage';
 import ChangePasswordPage from '../pages/ChangePasswordPage';
 import CreatePinPage from '../pages/CreatePinPage';
 import CreateTrainingModulePage from '../pages/CreateTrainingModulePage';
@@ -30,6 +32,7 @@ import TrainingRecordsPage from '../pages/TrainingRecordsPage';
 import TrainingSessionRecordPage from '../pages/TrainingSessionRecordPage';
 import TrainingSessionRunnerPage from '../pages/TrainingSessionRunnerPage';
 import TrainingQuizBuilderPage from '../pages/TrainingQuizBuilderPage';
+import TrainingQuizRunnerPage from '../pages/TrainingQuizRunnerPage';
 import UserDetailPage from '../pages/UserDetailPage';
 import UserTrainingProfilePage from '../pages/UserTrainingProfilePage';
 import UsersPage from '../pages/UsersPage';
@@ -84,6 +87,7 @@ export const router = createBrowserRouter([
       { path: 'training', element: <TrainingPage /> },
       { path: 'training/new', element: <CreateTrainingModulePage /> },
       { path: 'training/conduct', element: <CreateTrainingSessionPage /> },
+      { path: 'certifications/start/:moduleId/:traineeId', element: <CertificationQuizRunnerPage /> },
       { path: 'training/records', element: <TrainingRecordsPage /> },
       { path: 'training/matrix', element: <SkillsMatrixPage /> },
       { path: 'training/coverage', element: <TrainingCoveragePage /> },
@@ -96,7 +100,9 @@ export const router = createBrowserRouter([
       { path: 'training/sessions/:sessionId', element: <TrainingSessionRunnerPage /> },
       { path: 'training/sessions/:sessionId/view', element: <TrainingSessionRecordPage /> },
       { path: 'training/:moduleId/quiz', element: <TrainingQuizBuilderPage /> },
+      { path: 'training/:moduleId/quiz/take', element: <TrainingQuizRunnerPage /> },
       { path: 'certifications', element: <CertificationsPage /> },
+      { path: 'certifications/start', element: <StartCertificationPage /> },
       { path: 'place-charts', element: <PlaceChartsPage /> },
       { path: 'users', element: <UsersPage /> },
       { path: 'users/new', element: <CreateUserPage /> },

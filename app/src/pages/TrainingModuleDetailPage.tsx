@@ -164,6 +164,10 @@ function TrainingModuleDetailPage() {
             <PrimaryButton>Conduct Training</PrimaryButton>
           </Link>
 
+          <Link to={`/training/${module.id}/quiz/take`} style={{ textDecoration: 'none' }}>
+            <PrimaryButton>Take Quiz</PrimaryButton>
+          </Link>
+
           <Link to={`/training/${module.id}/quiz`} style={{ textDecoration: 'none' }}>
             <PrimaryButton>Manage Quiz</PrimaryButton>
           </Link>
@@ -299,6 +303,12 @@ function TrainingModuleDetailPage() {
               <Link to={`/training/${module.id}/start`} style={{ textDecoration: 'none' }}>
                 <button type="button" style={quickActionButtonStyle}>
                   Conduct Training
+                </button>
+              </Link>
+
+              <Link to={`/training/${module.id}/quiz/take`} style={{ textDecoration: 'none' }}>
+                <button type="button" style={quickActionButtonStyle}>
+                  Take Quiz
                 </button>
               </Link>
 

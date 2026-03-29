@@ -793,6 +793,34 @@ export async function getTrainingCertificationsByUser(
   return (data ?? []) as TrainingCertificationRecord[];
 }
 
+export async function upsertTrainingCertification(input: {
+  trainee_id: string;
+  module_id: string;
+  last_session_id?: string | null;
+  issued_at: string;
+  expires_at?: string | null;
+}) {
+  const { data, error } = await supabase
+    .from('training_certifications')
+    .upsert(
+      {
+        trainee_id: input.trainee_id,
+        module_id: input.module_id,
+        issued_at: input.issued_at,
+        expires_at: input.expires_at ?? null,
+        last_session_id: input.last_session_id ?? null,
+      },
+      {
+        onConflict: 'trainee_id,module_id',
+      }
+    )
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as TrainingCertificationRecord;
+}
+
 export async function getUserTrainingProfile(
   userId: string
 ): Promise<UserTrainingProfileRecord | null> {
@@ -1531,34 +1559,6 @@ function calculateExpiresAt(
   const issued = new Date(issuedAtIso);
   issued.setDate(issued.getDate() + recertFrequencyDays);
   return issued.toISOString();
-}
-
-export async function upsertTrainingCertification(input: {
-  trainee_id: string;
-  module_id: string;
-  last_session_id: string;
-  issued_at: string;
-  expires_at?: string | null;
-}) {
-  const { data, error } = await supabase
-    .from('training_certifications')
-    .upsert(
-      {
-        trainee_id: input.trainee_id,
-        module_id: input.module_id,
-        issued_at: input.issued_at,
-        expires_at: input.expires_at ?? null,
-        last_session_id: input.last_session_id,
-      },
-      {
-        onConflict: 'trainee_id,module_id',
-      }
-    )
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data as TrainingCertificationRecord;
 }
 
 export async function completeTrainingSession(sessionId: string) {
