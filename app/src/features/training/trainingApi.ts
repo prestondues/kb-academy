@@ -56,6 +56,38 @@ export type TrainingQuizAnswerOptionRecord = {
   updated_at?: string | null;
 };
 
+export type TrainingQuizAttemptRecord = {
+  id: string;
+  quiz_id: string;
+  module_id: string;
+  trainee_id: string;
+  started_at: string;
+  submitted_at?: string | null;
+  score_percent?: number | null;
+  passed?: boolean | null;
+  status: 'in_progress' | 'submitted';
+  created_at?: string | null;
+  updated_at?: string | null;
+  quiz?: {
+    title?: string | null;
+    pass_score?: number | null;
+  } | null;
+  module?: {
+    title?: string | null;
+  } | null;
+};
+
+export type TrainingQuizAttemptAnswerRecord = {
+  id: string;
+  attempt_id: string;
+  question_id: string;
+  selected_option_id?: string | null;
+  answer_text?: string | null;
+  is_correct?: boolean | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
 export type TrainingCertificationRecord = {
   id: string;
   trainee_id: string;
@@ -555,6 +587,160 @@ export async function deleteTrainingQuizAnswerOption(optionId: string) {
     .eq('id', optionId);
 
   if (error) throw error;
+}
+
+export async function getTrainingQuizAttemptsByUser(
+  userId: string
+): Promise<TrainingQuizAttemptRecord[]> {
+  const { data, error } = await supabase
+    .from('training_quiz_attempts')
+    .select(`
+      id,
+      quiz_id,
+      module_id,
+      trainee_id,
+      started_at,
+      submitted_at,
+      score_percent,
+      passed,
+      status,
+      created_at,
+      updated_at,
+      quiz:training_quizzes!training_quiz_attempts_quiz_id_fkey(
+        title,
+        pass_score
+      ),
+      module:training_modules!training_quiz_attempts_module_id_fkey(
+        title
+      )
+    `)
+    .eq('trainee_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []) as TrainingQuizAttemptRecord[];
+}
+
+export async function getTrainingQuizAttemptById(
+  attemptId: string
+): Promise<TrainingQuizAttemptRecord | null> {
+  const { data, error } = await supabase
+    .from('training_quiz_attempts')
+    .select(`
+      id,
+      quiz_id,
+      module_id,
+      trainee_id,
+      started_at,
+      submitted_at,
+      score_percent,
+      passed,
+      status,
+      created_at,
+      updated_at,
+      quiz:training_quizzes!training_quiz_attempts_quiz_id_fkey(
+        title,
+        pass_score
+      ),
+      module:training_modules!training_quiz_attempts_module_id_fkey(
+        title
+      )
+    `)
+    .eq('id', attemptId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return (data ?? null) as TrainingQuizAttemptRecord | null;
+}
+
+export async function createTrainingQuizAttempt(input: {
+  quiz_id: string;
+  module_id: string;
+  trainee_id: string;
+}) {
+  const { data, error } = await supabase
+    .from('training_quiz_attempts')
+    .insert({
+      quiz_id: input.quiz_id,
+      module_id: input.module_id,
+      trainee_id: input.trainee_id,
+      status: 'in_progress',
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as TrainingQuizAttemptRecord;
+}
+
+export async function getTrainingQuizAttemptAnswers(
+  attemptId: string
+): Promise<TrainingQuizAttemptAnswerRecord[]> {
+  const { data, error } = await supabase
+    .from('training_quiz_attempt_answers')
+    .select(`
+      id,
+      attempt_id,
+      question_id,
+      selected_option_id,
+      answer_text,
+      is_correct,
+      created_at,
+      updated_at
+    `)
+    .eq('attempt_id', attemptId);
+
+  if (error) throw error;
+  return (data ?? []) as TrainingQuizAttemptAnswerRecord[];
+}
+
+export async function upsertTrainingQuizAttemptAnswer(input: {
+  attempt_id: string;
+  question_id: string;
+  selected_option_id?: string | null;
+  answer_text?: string | null;
+  is_correct?: boolean | null;
+}) {
+  const { data, error } = await supabase
+    .from('training_quiz_attempt_answers')
+    .upsert(
+      {
+        attempt_id: input.attempt_id,
+        question_id: input.question_id,
+        selected_option_id: input.selected_option_id ?? null,
+        answer_text: input.answer_text ?? null,
+        is_correct: input.is_correct ?? null,
+      },
+      {
+        onConflict: 'attempt_id,question_id',
+      }
+    )
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as TrainingQuizAttemptAnswerRecord;
+}
+
+export async function submitTrainingQuizAttempt(input: {
+  attempt_id: string;
+  score_percent: number;
+  passed: boolean;
+}) {
+  const { data, error } = await supabase
+    .from('training_quiz_attempts')
+    .update({
+      submitted_at: new Date().toISOString(),
+      score_percent: input.score_percent,
+      passed: input.passed,
+      status: 'submitted',
+    })
+    .eq('id', input.attempt_id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as TrainingQuizAttemptRecord;
 }
 
 export async function getTrainingCertifications(): Promise<TrainingCertificationRecord[]> {
