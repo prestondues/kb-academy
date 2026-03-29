@@ -20,6 +20,42 @@ type ProfilePinRecord = {
   pin_reset_required?: boolean | null;
 };
 
+export type TrainingQuizRecord = {
+  id: string;
+  module_id: string;
+  title: string;
+  description?: string | null;
+  pass_score: number;
+  is_active: boolean;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+export type TrainingQuizQuestionType = 'multiple_choice' | 'true_false' | 'scaled';
+
+export type TrainingQuizQuestionRecord = {
+  id: string;
+  quiz_id: string;
+  question_text: string;
+  question_type: TrainingQuizQuestionType;
+  sort_order: number;
+  is_active: boolean;
+  scale_min?: number | null;
+  scale_max?: number | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+export type TrainingQuizAnswerOptionRecord = {
+  id: string;
+  question_id: string;
+  option_text: string;
+  sort_order: number;
+  is_correct: boolean;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
 export type TrainingCertificationRecord = {
   id: string;
   trainee_id: string;
@@ -301,6 +337,224 @@ export async function getMatrixUsers(): Promise<ProfileMatrixRecord[]> {
 
   if (error) throw error;
   return (data ?? []) as ProfileMatrixRecord[];
+}
+
+export async function getTrainingQuizByModule(
+  moduleId: string
+): Promise<TrainingQuizRecord | null> {
+  const { data, error } = await supabase
+    .from('training_quizzes')
+    .select('*')
+    .eq('module_id', moduleId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return (data ?? null) as TrainingQuizRecord | null;
+}
+
+export async function createTrainingQuiz(input: {
+  module_id: string;
+  title: string;
+  description?: string | null;
+  pass_score: number;
+  is_active: boolean;
+}) {
+  const { data, error } = await supabase
+    .from('training_quizzes')
+    .insert({
+      module_id: input.module_id,
+      title: input.title,
+      description: input.description ?? null,
+      pass_score: input.pass_score,
+      is_active: input.is_active,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as TrainingQuizRecord;
+}
+
+export async function updateTrainingQuiz(
+  quizId: string,
+  input: {
+    title: string;
+    description?: string | null;
+    pass_score: number;
+    is_active: boolean;
+  }
+) {
+  const { data, error } = await supabase
+    .from('training_quizzes')
+    .update({
+      title: input.title,
+      description: input.description ?? null,
+      pass_score: input.pass_score,
+      is_active: input.is_active,
+    })
+    .eq('id', quizId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as TrainingQuizRecord;
+}
+
+export async function getTrainingQuizQuestions(
+  quizId: string
+): Promise<TrainingQuizQuestionRecord[]> {
+  const { data, error } = await supabase
+    .from('training_quiz_questions')
+    .select('*')
+    .eq('quiz_id', quizId)
+    .order('sort_order', { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []) as TrainingQuizQuestionRecord[];
+}
+
+export async function createTrainingQuizQuestion(input: {
+  quiz_id: string;
+  question_text: string;
+  question_type: TrainingQuizQuestionType;
+  sort_order: number;
+  is_active: boolean;
+  scale_min?: number | null;
+  scale_max?: number | null;
+}) {
+  const { data, error } = await supabase
+    .from('training_quiz_questions')
+    .insert({
+      quiz_id: input.quiz_id,
+      question_text: input.question_text,
+      question_type: input.question_type,
+      sort_order: input.sort_order,
+      is_active: input.is_active,
+      scale_min: input.scale_min ?? null,
+      scale_max: input.scale_max ?? null,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as TrainingQuizQuestionRecord;
+}
+
+export async function updateTrainingQuizQuestion(
+  questionId: string,
+  input: {
+    question_text: string;
+    question_type: TrainingQuizQuestionType;
+    sort_order: number;
+    is_active: boolean;
+    scale_min?: number | null;
+    scale_max?: number | null;
+  }
+) {
+  const { data, error } = await supabase
+    .from('training_quiz_questions')
+    .update({
+      question_text: input.question_text,
+      question_type: input.question_type,
+      sort_order: input.sort_order,
+      is_active: input.is_active,
+      scale_min: input.scale_min ?? null,
+      scale_max: input.scale_max ?? null,
+    })
+    .eq('id', questionId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as TrainingQuizQuestionRecord;
+}
+
+export async function reorderTrainingQuizQuestions(
+  items: Array<{ id: string; sort_order: number }>
+) {
+  for (const item of items) {
+    const { error } = await supabase
+      .from('training_quiz_questions')
+      .update({ sort_order: item.sort_order })
+      .eq('id', item.id);
+
+    if (error) throw error;
+  }
+}
+
+export async function deleteTrainingQuizQuestion(questionId: string) {
+  const { error } = await supabase
+    .from('training_quiz_questions')
+    .delete()
+    .eq('id', questionId);
+
+  if (error) throw error;
+}
+
+export async function getTrainingQuizAnswerOptions(
+  questionId: string
+): Promise<TrainingQuizAnswerOptionRecord[]> {
+  const { data, error } = await supabase
+    .from('training_quiz_answer_options')
+    .select('*')
+    .eq('question_id', questionId)
+    .order('sort_order', { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []) as TrainingQuizAnswerOptionRecord[];
+}
+
+export async function createTrainingQuizAnswerOption(input: {
+  question_id: string;
+  option_text: string;
+  sort_order: number;
+  is_correct: boolean;
+}) {
+  const { data, error } = await supabase
+    .from('training_quiz_answer_options')
+    .insert({
+      question_id: input.question_id,
+      option_text: input.option_text,
+      sort_order: input.sort_order,
+      is_correct: input.is_correct,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as TrainingQuizAnswerOptionRecord;
+}
+
+export async function updateTrainingQuizAnswerOption(
+  optionId: string,
+  input: {
+    option_text: string;
+    sort_order: number;
+    is_correct: boolean;
+  }
+) {
+  const { data, error } = await supabase
+    .from('training_quiz_answer_options')
+    .update({
+      option_text: input.option_text,
+      sort_order: input.sort_order,
+      is_correct: input.is_correct,
+    })
+    .eq('id', optionId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as TrainingQuizAnswerOptionRecord;
+}
+
+export async function deleteTrainingQuizAnswerOption(optionId: string) {
+  const { error } = await supabase
+    .from('training_quiz_answer_options')
+    .delete()
+    .eq('id', optionId);
+
+  if (error) throw error;
 }
 
 export async function getTrainingCertifications(): Promise<TrainingCertificationRecord[]> {

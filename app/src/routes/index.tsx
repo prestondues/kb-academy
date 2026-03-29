@@ -29,6 +29,7 @@ import TrainingPage from '../pages/TrainingPage';
 import TrainingRecordsPage from '../pages/TrainingRecordsPage';
 import TrainingSessionRecordPage from '../pages/TrainingSessionRecordPage';
 import TrainingSessionRunnerPage from '../pages/TrainingSessionRunnerPage';
+import TrainingQuizBuilderPage from '../pages/TrainingQuizBuilderPage';
 import UserDetailPage from '../pages/UserDetailPage';
 import UserTrainingProfilePage from '../pages/UserTrainingProfilePage';
 import UsersPage from '../pages/UsersPage';
@@ -94,6 +95,7 @@ export const router = createBrowserRouter([
       { path: 'training/:moduleId/sections/:sectionId/edit', element: <EditTrainingSectionPage /> },
       { path: 'training/sessions/:sessionId', element: <TrainingSessionRunnerPage /> },
       { path: 'training/sessions/:sessionId/view', element: <TrainingSessionRecordPage /> },
+      { path: 'training/:moduleId/quiz', element: <TrainingQuizBuilderPage /> },
       { path: 'certifications', element: <CertificationsPage /> },
       { path: 'place-charts', element: <PlaceChartsPage /> },
       { path: 'users', element: <UsersPage /> },

@@ -8,25 +8,185 @@ import {
   getTrainingSessionsByUser,
   getTrainingHourProgressByUser,
   getTrainingTimeEntriesByUser,
-  getUserTrainingProfile,
-  type TrainingCertificationRecord,
-  type TrainingHourProgressRecord,
-  type TrainingTimeEntryRecord,
-  type UserTrainingProfileRecord,
 } from '../features/training/trainingApi';
-import { mapTrainingSessionToCard } from '../features/training/sessionMappers';
-import type { TrainingSessionCardModel } from '../features/training/sessionTypes';
-import TrainingSubnav from '../features/training/TrainingSubnav';
+import { supabase } from '../lib/supabase';
 import { theme } from '../styles/theme';
+
+type RawUserTrainingProfile = {
+  id?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  username?: string | null;
+  email?: string | null;
+  employee_id?: string | null;
+  trainer_enabled?: boolean | null;
+  probationary?: boolean | null;
+  is_active?: boolean | null;
+  role?: {
+    id?: string | null;
+    name?: string | null;
+  } | null;
+  department?: {
+    id?: string | null;
+    name?: string | null;
+  } | null;
+  shift?: {
+    id?: string | null;
+    name?: string | null;
+  } | null;
+};
+
+type UserTrainingProfileModel = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  username: string;
+  email: string;
+  employeeId: string;
+  trainerEnabled: boolean;
+  probationary: boolean;
+  isActive: boolean;
+  roleName: string;
+  departmentName: string;
+  shiftName: string;
+};
+
+type CertificationRecord = {
+  id: string;
+  issued_at?: string | null;
+  expires_at?: string | null;
+  module?: {
+    title?: string | null;
+    department?: {
+      name?: string | null;
+    } | null;
+  } | null;
+};
+
+type SessionRecord = {
+  id: string;
+  started_at?: string | null;
+  completed_at?: string | null;
+  duration_minutes?: number | null;
+  session_status?: string | null;
+  module?: {
+    title?: string | null;
+    department?: {
+      name?: string | null;
+    } | null;
+  } | null;
+};
+
+type SessionCardModel = {
+  id: string;
+  moduleTitle: string;
+  departmentName: string;
+  startedAt: string;
+  completedAt: string;
+  status: 'Completed' | 'In Progress' | 'Other';
+  durationLabel: string;
+};
+
+type HourProgressRecord = {
+  moduleId: string;
+  moduleTitle: string;
+  requiredHours: number;
+  loggedMinutes: number;
+  loggedHours: number;
+  remainingMinutes: number;
+  remainingHours: number;
+  percentComplete: number;
+};
+
+type TimeEntryRecord = {
+  id: string;
+  entry_date: string;
+  minutes_logged: number;
+  notes?: string | null;
+  module?: {
+    title?: string | null;
+  } | null;
+  trainer?: {
+    first_name?: string | null;
+    last_name?: string | null;
+  } | null;
+};
+
+function mapUserProfile(raw: RawUserTrainingProfile | null): UserTrainingProfileModel | null {
+  if (!raw?.id) return null;
+
+  return {
+    id: raw.id,
+    firstName: raw.first_name ?? '',
+    lastName: raw.last_name ?? '',
+    username: raw.username ?? '',
+    email: raw.email ?? '',
+    employeeId: raw.employee_id ?? '',
+    trainerEnabled: Boolean(raw.trainer_enabled),
+    probationary: Boolean(raw.probationary),
+    isActive: Boolean(raw.is_active),
+    roleName: raw.role?.name ?? '—',
+    departmentName: raw.department?.name ?? '—',
+    shiftName: raw.shift?.name ?? '—',
+  };
+}
+
+function mapSession(session: SessionRecord): SessionCardModel {
+  const statusRaw = session.session_status ?? '';
+  const status =
+    statusRaw === 'completed'
+      ? 'Completed'
+      : statusRaw === 'in_progress'
+      ? 'In Progress'
+      : 'Other';
+
+  const durationMinutes =
+    typeof session.duration_minutes === 'number' ? session.duration_minutes : null;
+
+  return {
+    id: session.id,
+    moduleTitle: session.module?.title ?? 'Untitled Module',
+    departmentName: session.module?.department?.name ?? '—',
+    startedAt: formatDateTime(session.started_at),
+    completedAt: formatDateTime(session.completed_at),
+    status,
+    durationLabel:
+      durationMinutes !== null ? `${Number((durationMinutes / 60).toFixed(2))}h` : '—',
+  };
+}
+
+async function getUserTrainingProfileDirect(userId: string) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select(`
+      id,
+      first_name,
+      last_name,
+      username,
+      email,
+      employee_id,
+      trainer_enabled,
+      probationary,
+      is_active,
+      role:roles(id, name),
+      department:departments!profiles_department_id_fkey(id, name),
+      shift:shifts!profiles_shift_id_fkey(id, name)
+    `)
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
 
 function UserTrainingProfilePage() {
   const { userId } = useParams();
 
-  const [user, setUser] = useState<UserTrainingProfileRecord | null>(null);
-  const [certifications, setCertifications] = useState<TrainingCertificationRecord[]>([]);
-  const [sessions, setSessions] = useState<TrainingSessionCardModel[]>([]);
-  const [hourProgress, setHourProgress] = useState<TrainingHourProgressRecord[]>([]);
-  const [timeEntries, setTimeEntries] = useState<TrainingTimeEntryRecord[]>([]);
+  const [user, setUser] = useState<UserTrainingProfileModel | null>(null);
+  const [certifications, setCertifications] = useState<CertificationRecord[]>([]);
+  const [sessions, setSessions] = useState<SessionCardModel[]>([]);
+  const [hourProgress, setHourProgress] = useState<HourProgressRecord[]>([]);
+  const [timeEntries, setTimeEntries] = useState<TimeEntryRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,18 +197,18 @@ function UserTrainingProfilePage() {
       try {
         const [userData, certificationData, sessionData, progressData, timeEntryData] =
           await Promise.all([
-            getUserTrainingProfile(userId),
+            getUserTrainingProfileDirect(userId),
             getTrainingCertificationsByUser(userId),
             getTrainingSessionsByUser(userId),
             getTrainingHourProgressByUser(userId),
             getTrainingTimeEntriesByUser(userId),
           ]);
 
-        setUser(userData);
-        setCertifications(certificationData);
-        setSessions(sessionData.map(mapTrainingSessionToCard));
-        setHourProgress(progressData);
-        setTimeEntries(timeEntryData);
+        setUser(mapUserProfile(userData as RawUserTrainingProfile | null));
+        setCertifications((certificationData ?? []) as CertificationRecord[]);
+        setSessions(((sessionData ?? []) as SessionRecord[]).map(mapSession));
+        setHourProgress((progressData ?? []) as HourProgressRecord[]);
+        setTimeEntries((timeEntryData ?? []) as TimeEntryRecord[]);
       } catch (err: unknown) {
         const message =
           err instanceof Error ? err.message : 'Failed to load user training profile.';
@@ -112,7 +272,7 @@ function UserTrainingProfilePage() {
 
   return (
     <PageContainer
-      title={`${user.first_name} ${user.last_name}`.trim()}
+      title={`${user.firstName} ${user.lastName}`.trim()}
       subtitle={`Training profile for @${user.username}`}
       actions={
         <Link to={`/users/${user.id}`} style={{ textDecoration: 'none' }}>
@@ -120,20 +280,18 @@ function UserTrainingProfilePage() {
         </Link>
       }
     >
-      <TrainingSubnav />
-
       <div style={layoutStyle}>
         <div style={{ display: 'grid', gap: '16px' }}>
           <ContentCard title="User Summary" subtitle="Training-related profile details.">
             <div style={summaryGridStyle}>
-              <SummaryItem label="Role" value={user.role?.name ?? '—'} />
-              <SummaryItem label="Department" value={user.department?.name ?? '—'} />
-              <SummaryItem label="Shift" value={user.shift?.name ?? '—'} />
-              <SummaryItem label="Employee ID" value={user.employee_id ?? '—'} />
-              <SummaryItem label="Contact Email" value={user.email ?? '—'} />
-              <SummaryItem label="Trainer Enabled" value={user.trainer_enabled ? 'Yes' : 'No'} />
+              <SummaryItem label="Role" value={user.roleName} />
+              <SummaryItem label="Department" value={user.departmentName} />
+              <SummaryItem label="Shift" value={user.shiftName} />
+              <SummaryItem label="Employee ID" value={user.employeeId || '—'} />
+              <SummaryItem label="Contact Email" value={user.email || '—'} />
+              <SummaryItem label="Trainer Enabled" value={user.trainerEnabled ? 'Yes' : 'No'} />
               <SummaryItem label="Probationary" value={user.probationary ? 'Yes' : 'No'} />
-              <SummaryItem label="Active" value={user.is_active ? 'Yes' : 'No'} />
+              <SummaryItem label="Active" value={user.isActive ? 'Yes' : 'No'} />
             </div>
           </ContentCard>
 
@@ -151,7 +309,8 @@ function UserTrainingProfilePage() {
                       <div>
                         <div style={recordTitleStyle}>{item.moduleTitle}</div>
                         <div style={recordMetaStyle}>
-                          {item.loggedHours}h logged • {item.requiredHours}h required • {item.remainingHours}h remaining
+                          {item.loggedHours}h logged • {item.requiredHours}h required •{' '}
+                          {item.remainingHours}h remaining
                         </div>
                       </div>
                       <div style={percentPillStyle}>{item.percentComplete}%</div>
@@ -186,7 +345,7 @@ function UserTrainingProfilePage() {
                   >
                     <div style={recordTitleStyle}>{session.moduleTitle}</div>
                     <div style={recordMetaStyle}>
-                      {session.departmentName} • {session.completedAt} • {session.durationMinutes ?? '—'}
+                      {session.departmentName} • {session.completedAt} • {session.durationLabel}
                     </div>
                   </Link>
                 ))}
@@ -268,7 +427,7 @@ function UserTrainingProfilePage() {
 
           <ContentCard
             title="Recent Time Entries"
-            subtitle={`${timeEntries.length} logged entry${timeEntries.length === 1 ? '' : 'ies'}`}
+            subtitle={`${timeEntries.length} logged entr${timeEntries.length === 1 ? 'y' : 'ies'}`}
           >
             {timeEntries.length === 0 ? (
               <div style={emptyStyle}>No time entries found.</div>

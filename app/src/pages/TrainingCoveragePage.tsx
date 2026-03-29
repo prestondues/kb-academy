@@ -1,31 +1,43 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import ContentCard from '../components/ContentCard';
 import PageContainer from '../components/PageContainer';
 import PrimaryButton from '../components/PrimaryButton';
-import TrainingSubnav from '../features/training/TrainingSubnav';
-import {
-  getTrainingCertifications,
-  getTrainingCoverageTargets,
-  getTrainingDepartments,
-  getTrainingModules,
-  getShifts,
-  upsertTrainingCoverageTarget,
-  updateTrainingCoverageTarget,
-  deleteTrainingCoverageTarget,
-  type TrainingCertificationRecord,
-  type TrainingCoverageTargetRecord,
-} from '../features/training/trainingApi';
-import { mapTrainingModuleToCard } from '../features/training/trainingMappers';
-import { useAuth } from '../features/auth/useAuth';
-import {
-  canViewAllDepartments,
-  getVisibleDepartmentName,
-} from '../features/auth/visibility';
+import { supabase } from '../lib/supabase';
 import { theme } from '../styles/theme';
 
 type LookupOption = {
   id: string;
   name: string;
+};
+
+type CoverageTargetRow = {
+  id: string;
+  module_id: string;
+  department_id: string;
+  shift_id: string;
+  target_count: number;
+  is_active?: boolean;
+  module?: {
+    id?: string | null;
+    title?: string | null;
+  } | null;
+  department?: {
+    id?: string | null;
+    name?: string | null;
+  } | null;
+  shift?: {
+    id?: string | null;
+    name?: string | null;
+  } | null;
+};
+
+type CertificationRow = {
+  module_id: string;
+  module?: {
+    department?: {
+      name?: string | null;
+    } | null;
+  } | null;
 };
 
 type CoverageRow = {
@@ -42,13 +54,11 @@ type CoverageRow = {
 };
 
 function TrainingCoveragePage() {
-  const { profile } = useAuth();
-
   const [modules, setModules] = useState<LookupOption[]>([]);
   const [departments, setDepartments] = useState<LookupOption[]>([]);
   const [shifts, setShifts] = useState<LookupOption[]>([]);
-  const [targets, setTargets] = useState<TrainingCoverageTargetRecord[]>([]);
-  const [certifications, setCertifications] = useState<TrainingCertificationRecord[]>([]);
+  const [targets, setTargets] = useState<CoverageTargetRow[]>([]);
+  const [certifications, setCertifications] = useState<CertificationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,40 +75,76 @@ function TrainingCoveragePage() {
   useEffect(() => {
     async function loadData() {
       try {
-        const [moduleData, departmentData, shiftData, targetData, certificationData] =
-          await Promise.all([
-            getTrainingModules(),
-            getTrainingDepartments(),
-            getShifts(),
-            getTrainingCoverageTargets(),
-            getTrainingCertifications(),
-          ]);
+        const [
+          modulesResponse,
+          departmentsResponse,
+          shiftsResponse,
+          targetsResponse,
+          certificationsResponse,
+        ] = await Promise.all([
+          supabase
+            .from('training_modules')
+            .select('id, title')
+            .eq('is_active', true)
+            .order('title', { ascending: true }),
 
-        const allowAll = canViewAllDepartments(profile);
-        const visibleDepartmentName = getVisibleDepartmentName(profile);
+          supabase
+            .from('departments')
+            .select('id, name')
+            .eq('is_active', true)
+            .order('name', { ascending: true }),
 
-        const mappedModules = moduleData
-          .map((module) => mapTrainingModuleToCard(module))
-          .filter((module) => allowAll || module.department === visibleDepartmentName)
-          .map((module) => ({ id: module.id, name: module.title }));
+          supabase
+            .from('shifts')
+            .select('id, name')
+            .eq('is_active', true)
+            .order('name', { ascending: true }),
 
-        const filteredDepartments = departmentData.filter(
-          (department) => allowAll || department.name === visibleDepartmentName
+          supabase
+            .from('training_coverage_targets')
+            .select(`
+              id,
+              module_id,
+              department_id,
+              shift_id,
+              target_count,
+              is_active,
+              module:training_modules!training_coverage_targets_module_id_fkey(id, title),
+              department:departments!training_coverage_targets_department_id_fkey(id, name),
+              shift:shifts!training_coverage_targets_shift_id_fkey(id, name)
+            `)
+            .eq('is_active', true)
+            .order('created_at', { ascending: false }),
+
+          supabase
+            .from('training_certifications')
+            .select(`
+              module_id,
+              module:training_modules!training_certifications_module_id_fkey(
+                department:departments!training_modules_department_id_fkey(name)
+              )
+            `),
+        ]);
+
+        if (modulesResponse.error) throw modulesResponse.error;
+        if (departmentsResponse.error) throw departmentsResponse.error;
+        if (shiftsResponse.error) throw shiftsResponse.error;
+        if (targetsResponse.error) throw targetsResponse.error;
+        if (certificationsResponse.error) throw certificationsResponse.error;
+
+        setModules(
+          ((modulesResponse.data ?? []) as Array<{ id: string; title: string }>).map((item) => ({
+            id: item.id,
+            name: item.title,
+          }))
         );
 
-        const filteredTargets = targetData.filter(
-          (target) => allowAll || target.department?.name === visibleDepartmentName
+        setDepartments((departmentsResponse.data ?? []) as LookupOption[]);
+        setShifts((shiftsResponse.data ?? []) as LookupOption[]);
+        setTargets((targetsResponse.data ?? []) as CoverageTargetRow[]);
+        setCertifications(
+          ((certificationsResponse.data ?? []) as unknown) as CertificationRow[]
         );
-
-        setModules(mappedModules);
-        setDepartments(filteredDepartments);
-        setShifts(shiftData);
-        setTargets(filteredTargets);
-        setCertifications(certificationData);
-
-        if (!allowAll && filteredDepartments.length === 1) {
-          setForm((prev) => ({ ...prev, department_id: filteredDepartments[0].id }));
-        }
       } catch (err: unknown) {
         const message =
           err instanceof Error ? err.message : 'Failed to load coverage targets.';
@@ -109,29 +155,34 @@ function TrainingCoveragePage() {
     }
 
     loadData();
-  }, [profile]);
+  }, []);
 
   async function refreshTargets() {
-    const refreshedTargets = await getTrainingCoverageTargets();
-    const allowAll = canViewAllDepartments(profile);
-    const visibleDepartmentName = getVisibleDepartmentName(profile);
+    const { data, error: refreshError } = await supabase
+      .from('training_coverage_targets')
+      .select(`
+        id,
+        module_id,
+        department_id,
+        shift_id,
+        target_count,
+        is_active,
+        module:training_modules!training_coverage_targets_module_id_fkey(id, title),
+        department:departments!training_coverage_targets_department_id_fkey(id, name),
+        shift:shifts!training_coverage_targets_shift_id_fkey(id, name)
+      `)
+      .eq('is_active', true)
+      .order('created_at', { ascending: false });
 
-    setTargets(
-      refreshedTargets.filter(
-        (target) => allowAll || target.department?.name === visibleDepartmentName
-      )
-    );
+    if (refreshError) throw refreshError;
+    setTargets((data ?? []) as CoverageTargetRow[]);
   }
 
   function resetForm() {
-    const allowAll = canViewAllDepartments(profile);
-    const visibleDepartmentName = getVisibleDepartmentName(profile);
-    const matchingDepartment = departments.find((d) => d.name === visibleDepartmentName);
-
     setEditingTargetId(null);
     setForm({
       module_id: '',
-      department_id: !allowAll && matchingDepartment ? matchingDepartment.id : '',
+      department_id: '',
       shift_id: '',
       target_count: '',
     });
@@ -148,20 +199,32 @@ function TrainingCoveragePage() {
       setError(null);
 
       if (editingTargetId) {
-        await updateTrainingCoverageTarget({
-          id: editingTargetId,
-          module_id: form.module_id,
-          department_id: form.department_id,
-          shift_id: form.shift_id,
-          target_count: Number(form.target_count),
-        });
+        const { error: updateError } = await supabase
+          .from('training_coverage_targets')
+          .update({
+            module_id: form.module_id,
+            department_id: form.department_id,
+            shift_id: form.shift_id,
+            target_count: Number(form.target_count),
+          })
+          .eq('id', editingTargetId);
+
+        if (updateError) throw updateError;
       } else {
-        await upsertTrainingCoverageTarget({
-          module_id: form.module_id,
-          department_id: form.department_id,
-          shift_id: form.shift_id,
-          target_count: Number(form.target_count),
-        });
+        const { error: insertError } = await supabase
+          .from('training_coverage_targets')
+          .upsert(
+            {
+              module_id: form.module_id,
+              department_id: form.department_id,
+              shift_id: form.shift_id,
+              target_count: Number(form.target_count),
+              is_active: true,
+            },
+            { onConflict: 'module_id,department_id,shift_id' }
+          );
+
+        if (insertError) throw insertError;
       }
 
       await refreshTargets();
@@ -178,7 +241,14 @@ function TrainingCoveragePage() {
   async function handleDeleteTarget(id: string) {
     try {
       setError(null);
-      await deleteTrainingCoverageTarget(id);
+
+      const { error: deleteError } = await supabase
+        .from('training_coverage_targets')
+        .update({ is_active: false })
+        .eq('id', id);
+
+      if (deleteError) throw deleteError;
+
       await refreshTargets();
 
       if (editingTargetId === id) {
@@ -195,9 +265,9 @@ function TrainingCoveragePage() {
     return targets.map((target) => {
       const actual = certifications.filter((cert) => {
         if (cert.module_id !== target.module_id) return false;
-        const moduleDepartment = cert.module?.department?.name ?? null;
+        const certDepartment = cert.module?.department?.name ?? null;
         const targetDepartment = target.department?.name ?? null;
-        return moduleDepartment === targetDepartment;
+        return certDepartment === targetDepartment;
       }).length;
 
       return {
@@ -217,11 +287,9 @@ function TrainingCoveragePage() {
 
   return (
     <PageContainer
-      title="Training"
-      subtitle="Coverage targets for certified staffing by module, department, and shift."
+      title="Training Coverage"
+      subtitle="Target vs actual certified counts by module, department, and shift."
     >
-      <TrainingSubnav />
-
       <div style={shellStyle}>
         <ContentCard
           title={editingTargetId ? 'Edit Coverage Target' : 'Set Coverage Target'}
@@ -294,13 +362,7 @@ function TrainingCoveragePage() {
             ) : null}
 
             <PrimaryButton onClick={handleSaveTarget} disabled={saving}>
-              {saving
-                ? editingTargetId
-                  ? 'Saving...'
-                  : 'Saving...'
-                : editingTargetId
-                ? 'Update Target'
-                : 'Save Target'}
+              {saving ? 'Saving...' : editingTargetId ? 'Update Target' : 'Save Target'}
             </PrimaryButton>
           </div>
         </ContentCard>
@@ -386,7 +448,7 @@ function Field({
   children,
 }: {
   label: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <div>
