@@ -106,6 +106,29 @@ export type TrainingCertificationRecord = {
   } | null;
 };
 
+export type TrainingCertificationListRecord = {
+  id: string;
+  trainee_id: string;
+  module_id: string;
+  issued_at: string;
+  expires_at?: string | null;
+  last_session_id?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  trainee?: {
+    first_name?: string | null;
+    last_name?: string | null;
+    username?: string | null;
+  } | null;
+  module?: {
+    id?: string | null;
+    title?: string | null;
+    department?: {
+      name?: string | null;
+    } | null;
+  } | null;
+};
+
 export type TrainingCoverageTargetRecord = {
   id: string;
   module_id: string;
@@ -791,6 +814,35 @@ export async function getTrainingCertificationsByUser(
 
   if (error) throw error;
   return (data ?? []) as TrainingCertificationRecord[];
+}
+
+export async function getTrainingCertificationRecords(): Promise<TrainingCertificationListRecord[]> {
+  const { data, error } = await supabase
+    .from('training_certifications')
+    .select(`
+      id,
+      trainee_id,
+      module_id,
+      issued_at,
+      expires_at,
+      last_session_id,
+      created_at,
+      updated_at,
+      trainee:profiles!training_certifications_trainee_id_fkey(
+        first_name,
+        last_name,
+        username
+      ),
+      module:training_modules!training_certifications_module_id_fkey(
+        id,
+        title,
+        department:departments!training_modules_department_id_fkey(name)
+      )
+    `)
+    .order('issued_at', { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []) as TrainingCertificationListRecord[];
 }
 
 export async function upsertTrainingCertification(input: {
