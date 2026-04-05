@@ -228,6 +228,7 @@ function UserTrainingProfilePage() {
                     <th style={thStyle}>Issued</th>
                     <th style={thStyle}>Expires</th>
                     <th style={thStyle}>Status</th>
+                    <th style={thStyle}>Review</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -247,6 +248,15 @@ function UserTrainingProfilePage() {
                         >
                           {record.status}
                         </span>
+                      </td>
+                      <td style={tdStyle}>
+                        <button
+                          type="button"
+                          style={reviewButtonStyle}
+                          onClick={() => navigate(`/training/certifications/${record.id}`)}
+                        >
+                          Review Certification
+                        </button>
                       </td>
                     </tr>
                   ))}

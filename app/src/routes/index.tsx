@@ -5,6 +5,7 @@ import MaintenanceGate from '../features/system/MaintenanceGate';
 import AppLayout from '../layouts/AppLayout';
 import AdminPage from '../pages/AdminPage';
 import AnnouncementsPage from '../pages/AnnouncementsPage';
+import CertificationDetailPage from '../pages/CertificationDetailPage';
 import CertificationsPage from '../pages/CertificationsPage';
 import StartCertificationPage from '../pages/StartCertificationPage';
 import CertificationQuizRunnerPage from '../pages/CertificationQuizRunnerPage';
@@ -117,6 +118,10 @@ export const router = createBrowserRouter([
       {
         path: 'training/quiz-attempts/:attemptId',
         element: <QuizAttemptReviewPage />,
+      },
+      {
+        path: 'training/certifications/:certificationId',
+        element: <CertificationDetailPage />,
       },
       { path: 'certifications', element: <CertificationsPage /> },
       { path: 'certifications/start', element: <StartCertificationPage /> },

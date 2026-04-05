@@ -141,6 +141,38 @@ export type TrainingCertificationListRecord = {
   } | null;
 };
 
+export type TrainingCertificationDetailRecord = {
+  id: string;
+  trainee_id: string;
+  module_id: string;
+  issued_at: string;
+  expires_at?: string | null;
+  last_session_id?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  trainee?: {
+    first_name?: string | null;
+    last_name?: string | null;
+    username?: string | null;
+    department?: {
+      name?: string | null;
+    } | null;
+    shift?: {
+      name?: string | null;
+    } | null;
+  } | null;
+  module?: {
+    id?: string | null;
+    title?: string | null;
+    department?: {
+      name?: string | null;
+    } | null;
+    module_type?: string | null;
+    requires_quiz?: boolean | null;
+    recert_frequency_days?: number | null;
+  } | null;
+};
+
 export type TrainingCoverageTargetRecord = {
   id: string;
   module_id: string;
@@ -891,6 +923,43 @@ export async function getTrainingCertificationRecords(): Promise<TrainingCertifi
 
   if (error) throw error;
   return (data ?? []) as TrainingCertificationListRecord[];
+}
+
+export async function getTrainingCertificationById(
+  certificationId: string
+): Promise<TrainingCertificationDetailRecord | null> {
+  const { data, error } = await supabase
+    .from('training_certifications')
+    .select(`
+      id,
+      trainee_id,
+      module_id,
+      issued_at,
+      expires_at,
+      last_session_id,
+      created_at,
+      updated_at,
+      trainee:profiles!training_certifications_trainee_id_fkey(
+        first_name,
+        last_name,
+        username,
+        department:departments!profiles_department_id_fkey(name),
+        shift:shifts!profiles_shift_id_fkey(name)
+      ),
+      module:training_modules!training_certifications_module_id_fkey(
+        id,
+        title,
+        module_type,
+        requires_quiz,
+        recert_frequency_days,
+        department:departments!training_modules_department_id_fkey(name)
+      )
+    `)
+    .eq('id', certificationId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return (data ?? null) as TrainingCertificationDetailRecord | null;
 }
 
 export async function upsertTrainingCertification(input: {
