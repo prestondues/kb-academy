@@ -23,6 +23,7 @@ import LoginPage from '../pages/LoginPage';
 import ManualTimeLogPage from '../pages/ManualTimeLogPage';
 import NotFoundPage from '../pages/NotFoundPage';
 import PlaceChartsPage from '../pages/PlaceChartsPage';
+import QuizAttemptReviewPage from '../pages/QuizAttemptReviewPage';
 import ReportsPage from '../pages/ReportsPage';
 import SkillsMatrixPage from '../pages/SkillsMatrixPage';
 import TrainingCoveragePage from '../pages/TrainingCoveragePage';
@@ -87,7 +88,10 @@ export const router = createBrowserRouter([
       { path: 'training', element: <TrainingPage /> },
       { path: 'training/new', element: <CreateTrainingModulePage /> },
       { path: 'training/conduct', element: <CreateTrainingSessionPage /> },
-      { path: 'certifications/start/:moduleId/:traineeId', element: <CertificationQuizRunnerPage /> },
+      {
+        path: 'certifications/start/:moduleId/:traineeId',
+        element: <CertificationQuizRunnerPage />,
+      },
       { path: 'training/records', element: <TrainingRecordsPage /> },
       { path: 'training/matrix', element: <SkillsMatrixPage /> },
       { path: 'training/coverage', element: <TrainingCoveragePage /> },
@@ -95,12 +99,25 @@ export const router = createBrowserRouter([
       { path: 'training/:moduleId', element: <TrainingModuleDetailPage /> },
       { path: 'training/:moduleId/edit', element: <EditTrainingModulePage /> },
       { path: 'training/:moduleId/start', element: <CreateTrainingSessionPage /> },
-      { path: 'training/:moduleId/sections/new', element: <CreateTrainingSectionPage /> },
-      { path: 'training/:moduleId/sections/:sectionId/edit', element: <EditTrainingSectionPage /> },
+      {
+        path: 'training/:moduleId/sections/new',
+        element: <CreateTrainingSectionPage />,
+      },
+      {
+        path: 'training/:moduleId/sections/:sectionId/edit',
+        element: <EditTrainingSectionPage />,
+      },
       { path: 'training/sessions/:sessionId', element: <TrainingSessionRunnerPage /> },
-      { path: 'training/sessions/:sessionId/view', element: <TrainingSessionRecordPage /> },
+      {
+        path: 'training/sessions/:sessionId/view',
+        element: <TrainingSessionRecordPage />,
+      },
       { path: 'training/:moduleId/quiz', element: <TrainingQuizBuilderPage /> },
       { path: 'training/:moduleId/quiz/take', element: <TrainingQuizRunnerPage /> },
+      {
+        path: 'training/quiz-attempts/:attemptId',
+        element: <QuizAttemptReviewPage />,
+      },
       { path: 'certifications', element: <CertificationsPage /> },
       { path: 'certifications/start', element: <StartCertificationPage /> },
       { path: 'place-charts', element: <PlaceChartsPage /> },

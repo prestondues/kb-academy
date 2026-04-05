@@ -272,6 +272,7 @@ function UserTrainingProfilePage() {
                     <th style={thStyle}>Score</th>
                     <th style={thStyle}>Result</th>
                     <th style={thStyle}>Submitted</th>
+                    <th style={thStyle}>Review</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -294,6 +295,15 @@ function UserTrainingProfilePage() {
                         </span>
                       </td>
                       <td style={tdStyle}>{record.submittedAt}</td>
+                      <td style={tdStyle}>
+                        <button
+                          type="button"
+                          style={reviewButtonStyle}
+                          onClick={() => navigate(`/training/quiz-attempts/${record.id}`)}
+                        >
+                          Review Attempt
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -452,6 +462,15 @@ const neutralBadgeStyle: CSSProperties = {
   color: '#4b5b6a',
   fontWeight: 800,
   fontSize: '12px',
+};
+
+const reviewButtonStyle: CSSProperties = {
+  border: `1px solid ${theme.colors.border}`,
+  background: '#ffffff',
+  borderRadius: '10px',
+  padding: '8px 10px',
+  fontWeight: 700,
+  cursor: 'pointer',
 };
 
 const progressListStyle: CSSProperties = {

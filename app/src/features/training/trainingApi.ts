@@ -88,6 +88,18 @@ export type TrainingQuizAttemptAnswerRecord = {
   updated_at?: string | null;
 };
 
+export type TrainingQuizAttemptReviewQuestion = {
+  id: string;
+  question_text: string;
+  question_type: TrainingQuizQuestionType;
+  sort_order: number;
+  is_active: boolean;
+  scale_min?: number | null;
+  scale_max?: number | null;
+  options: TrainingQuizAnswerOptionRecord[];
+  attemptAnswer?: TrainingQuizAttemptAnswerRecord | null;
+};
+
 export type TrainingCertificationRecord = {
   id: string;
   trainee_id: string;
@@ -764,6 +776,42 @@ export async function submitTrainingQuizAttempt(input: {
 
   if (error) throw error;
   return data as TrainingQuizAttemptRecord;
+}
+
+export async function getTrainingQuizAttemptReviewData(attemptId: string): Promise<{
+  attempt: TrainingQuizAttemptRecord | null;
+  questions: TrainingQuizAttemptReviewQuestion[];
+}> {
+  const attempt = await getTrainingQuizAttemptById(attemptId);
+
+  if (!attempt) {
+    return {
+      attempt: null,
+      questions: [],
+    };
+  }
+
+  const questions = await getTrainingQuizQuestions(attempt.quiz_id);
+  const answers = await getTrainingQuizAttemptAnswers(attemptId);
+
+  const questionsWithOptions = await Promise.all(
+    questions.map(async (question) => {
+      const options = await getTrainingQuizAnswerOptions(question.id);
+      const attemptAnswer =
+        answers.find((answer) => answer.question_id === question.id) ?? null;
+
+      return {
+        ...question,
+        options,
+        attemptAnswer,
+      };
+    })
+  );
+
+  return {
+    attempt,
+    questions: questionsWithOptions,
+  };
 }
 
 export async function getTrainingCertifications(): Promise<TrainingCertificationRecord[]> {
