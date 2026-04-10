@@ -9,6 +9,8 @@ import {
 } from '../features/training/trainingApi';
 import { theme } from '../styles/theme';
 
+type CertificationStatus = 'Current' | 'Expiring Soon' | 'Expired';
+
 type CertificationRow = {
   id: string;
   traineeName: string;
@@ -17,7 +19,8 @@ type CertificationRow = {
   departmentName: string;
   issuedAt: string;
   expiresAt: string;
-  status: 'Current' | 'Expired';
+  expiresAtRaw: string | null;
+  status: CertificationStatus;
   quizAttemptId: string | null;
 };
 
@@ -34,13 +37,28 @@ function formatDateTime(value?: string | null) {
   });
 }
 
-function getCertificationStatus(expiresAt?: string | null): 'Current' | 'Expired' {
+function getCertificationStatus(expiresAt?: string | null): CertificationStatus {
   if (!expiresAt) return 'Current';
 
   const expires = new Date(expiresAt);
   if (Number.isNaN(expires.getTime())) return 'Current';
 
-  return expires < new Date() ? 'Expired' : 'Current';
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const expiresDay = new Date(
+    expires.getFullYear(),
+    expires.getMonth(),
+    expires.getDate()
+  );
+
+  if (expiresDay < today) return 'Expired';
+
+  const thirtyDaysFromNow = new Date(today);
+  thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+
+  if (expiresDay <= thirtyDaysFromNow) return 'Expiring Soon';
+
+  return 'Current';
 }
 
 function mapCertification(record: TrainingCertificationListRecord): CertificationRow {
@@ -58,6 +76,7 @@ function mapCertification(record: TrainingCertificationListRecord): Certificatio
     departmentName: record.module?.department?.name ?? '—',
     issuedAt: formatDateTime(record.issued_at),
     expiresAt: record.expires_at ? formatDateTime(record.expires_at) : 'No expiration',
+    expiresAtRaw: record.expires_at ?? null,
     status,
     quizAttemptId: record.quiz_attempt_id ?? null,
   };
@@ -89,8 +108,28 @@ function CertificationsPage() {
     [records]
   );
 
+  const expiringSoonCertifications = useMemo(
+    () => records.filter((record) => record.status === 'Expiring Soon'),
+    [records]
+  );
+
   const expiredCertifications = useMemo(
     () => records.filter((record) => record.status === 'Expired'),
+    [records]
+  );
+
+  const attentionRecords = useMemo(
+    () =>
+      [...records]
+        .filter(
+          (record) =>
+            record.status === 'Expiring Soon' || record.status === 'Expired'
+        )
+        .sort((a, b) => {
+          const aTime = a.expiresAtRaw ? new Date(a.expiresAtRaw).getTime() : Number.MAX_SAFE_INTEGER;
+          const bTime = b.expiresAtRaw ? new Date(b.expiresAtRaw).getTime() : Number.MAX_SAFE_INTEGER;
+          return aTime - bTime;
+        }),
     [records]
   );
 
@@ -125,10 +164,72 @@ function CertificationsPage() {
           <div style={summaryGridStyle}>
             <SummaryItem label="Total Records" value={String(records.length)} />
             <SummaryItem label="Current" value={String(currentCertifications.length)} />
+            <SummaryItem label="Expiring Soon" value={String(expiringSoonCertifications.length)} />
             <SummaryItem label="Expired" value={String(expiredCertifications.length)} />
           </div>
 
           {error ? <div style={errorStyle}>{error}</div> : null}
+        </ContentCard>
+
+        <ContentCard
+          title="Needs Attention"
+          subtitle="Certifications that are expired or expiring within 30 days."
+        >
+          {attentionRecords.length === 0 ? (
+            <div style={emptyStyle}>No certifications currently need attention.</div>
+          ) : (
+            <div style={attentionListStyle}>
+              {attentionRecords.map((record) => (
+                <div key={record.id} style={attentionCardStyle}>
+                  <div style={attentionTopRowStyle}>
+                    <div>
+                      <div style={attentionTitleStyle}>{record.traineeName}</div>
+                      <div style={attentionMetaStyle}>
+                        {record.moduleTitle} • {record.departmentName}
+                      </div>
+                    </div>
+
+                    <span
+                      style={
+                        record.status === 'Expired'
+                          ? expiredBadgeStyle
+                          : warningBadgeStyle
+                      }
+                    >
+                      {record.status}
+                    </span>
+                  </div>
+
+                  <div style={attentionDatesStyle}>
+                    Expires: {record.expiresAt}
+                  </div>
+
+                  <div style={reviewButtonsWrapStyle}>
+                    <button
+                      type="button"
+                      style={reviewButtonStyle}
+                      onClick={() => navigate(`/training/certifications/${record.id}`)}
+                    >
+                      Review Certification
+                    </button>
+
+                    <button
+                      type="button"
+                      style={reviewButtonStyle}
+                      disabled={!record.quizAttemptId}
+                      onClick={() => {
+                        if (record.quizAttemptId) {
+                          navigate(`/training/quiz-attempts/${record.quizAttemptId}`);
+                        }
+                      }}
+                    >
+                      Review Quiz
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </ContentCard>
 
         <ContentCard
@@ -167,9 +268,11 @@ function CertificationsPage() {
                       <td style={tdStyle}>
                         <span
                           style={
-                            record.status === 'Current'
-                              ? currentBadgeStyle
-                              : expiredBadgeStyle
+                            record.status === 'Expired'
+                              ? expiredBadgeStyle
+                              : record.status === 'Expiring Soon'
+                              ? warningBadgeStyle
+                              : currentBadgeStyle
                           }
                         >
                           {record.status}
@@ -233,7 +336,7 @@ const layoutStyle: CSSProperties = {
 
 const summaryGridStyle: CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+  gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
   gap: '12px',
 };
 
@@ -270,6 +373,45 @@ const errorStyle: CSSProperties = {
 const emptyStyle: CSSProperties = {
   color: theme.colors.mutedText,
   lineHeight: 1.6,
+};
+
+const attentionListStyle: CSSProperties = {
+  display: 'grid',
+  gap: '12px',
+};
+
+const attentionCardStyle: CSSProperties = {
+  border: `1px solid ${theme.colors.border}`,
+  borderRadius: '16px',
+  padding: '14px',
+  background: '#ffffff',
+  display: 'grid',
+  gap: '10px',
+};
+
+const attentionTopRowStyle: CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  gap: '12px',
+  alignItems: 'flex-start',
+};
+
+const attentionTitleStyle: CSSProperties = {
+  fontSize: '16px',
+  fontWeight: 800,
+  color: theme.colors.text,
+};
+
+const attentionMetaStyle: CSSProperties = {
+  marginTop: '4px',
+  fontSize: '13px',
+  color: theme.colors.mutedText,
+};
+
+const attentionDatesStyle: CSSProperties = {
+  fontSize: '14px',
+  color: theme.colors.text,
+  fontWeight: 600,
 };
 
 const tableWrapStyle: CSSProperties = {
@@ -319,13 +461,24 @@ const currentBadgeStyle: CSSProperties = {
   fontSize: '12px',
 };
 
-const expiredBadgeStyle: CSSProperties = {
+const warningBadgeStyle: CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
   padding: '6px 10px',
   borderRadius: '999px',
   background: '#fff4e8',
   color: '#9a5b13',
+  fontWeight: 800,
+  fontSize: '12px',
+};
+
+const expiredBadgeStyle: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  padding: '6px 10px',
+  borderRadius: '999px',
+  background: '#fdecec',
+  color: '#a12828',
   fontWeight: 800,
   fontSize: '12px',
 };
