@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import ContentCard from '../components/ContentCard';
 import PageContainer from '../components/PageContainer';
 import PrimaryButton from '../components/PrimaryButton';
@@ -18,6 +18,7 @@ type CertificationRow = {
   issuedAt: string;
   expiresAt: string;
   status: 'Current' | 'Expired';
+  quizAttemptId: string | null;
 };
 
 function formatDateTime(value?: string | null) {
@@ -58,10 +59,12 @@ function mapCertification(record: TrainingCertificationListRecord): Certificatio
     issuedAt: formatDateTime(record.issued_at),
     expiresAt: record.expires_at ? formatDateTime(record.expires_at) : 'No expiration',
     status,
+    quizAttemptId: record.quiz_attempt_id ?? null,
   };
 }
 
 function CertificationsPage() {
+  const navigate = useNavigate();
   const [records, setRecords] = useState<CertificationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -145,6 +148,7 @@ function CertificationsPage() {
                     <th style={thStyle}>Issued</th>
                     <th style={thStyle}>Expires</th>
                     <th style={thStyle}>Status</th>
+                    <th style={thStyle}>Review</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -170,6 +174,30 @@ function CertificationsPage() {
                         >
                           {record.status}
                         </span>
+                      </td>
+                      <td style={tdStyle}>
+                        <div style={reviewButtonsWrapStyle}>
+                          <button
+                            type="button"
+                            style={reviewButtonStyle}
+                            onClick={() => navigate(`/training/certifications/${record.id}`)}
+                          >
+                            Review Certification
+                          </button>
+
+                          <button
+                            type="button"
+                            style={reviewButtonStyle}
+                            disabled={!record.quizAttemptId}
+                            onClick={() => {
+                              if (record.quizAttemptId) {
+                                navigate(`/training/quiz-attempts/${record.quizAttemptId}`);
+                              }
+                            }}
+                          >
+                            Review Quiz
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -300,6 +328,21 @@ const expiredBadgeStyle: CSSProperties = {
   color: '#9a5b13',
   fontWeight: 800,
   fontSize: '12px',
+};
+
+const reviewButtonsWrapStyle: CSSProperties = {
+  display: 'flex',
+  gap: '8px',
+  flexWrap: 'wrap',
+};
+
+const reviewButtonStyle: CSSProperties = {
+  border: `1px solid ${theme.colors.border}`,
+  background: '#ffffff',
+  borderRadius: '10px',
+  padding: '8px 10px',
+  fontWeight: 700,
+  cursor: 'pointer',
 };
 
 export default CertificationsPage;

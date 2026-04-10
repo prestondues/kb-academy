@@ -104,6 +104,7 @@ export type TrainingCertificationRecord = {
   id: string;
   trainee_id: string;
   module_id: string;
+  quiz_attempt_id?: string | null;
   issued_at: string;
   expires_at?: string | null;
   last_session_id?: string | null;
@@ -122,6 +123,7 @@ export type TrainingCertificationListRecord = {
   id: string;
   trainee_id: string;
   module_id: string;
+  quiz_attempt_id?: string | null;
   issued_at: string;
   expires_at?: string | null;
   last_session_id?: string | null;
@@ -145,6 +147,7 @@ export type TrainingCertificationDetailRecord = {
   id: string;
   trainee_id: string;
   module_id: string;
+  quiz_attempt_id?: string | null;
   issued_at: string;
   expires_at?: string | null;
   last_session_id?: string | null;
@@ -853,6 +856,7 @@ export async function getTrainingCertifications(): Promise<TrainingCertification
       id,
       trainee_id,
       module_id,
+      quiz_attempt_id,
       issued_at,
       expires_at,
       last_session_id,
@@ -878,6 +882,7 @@ export async function getTrainingCertificationsByUser(
       id,
       trainee_id,
       module_id,
+      quiz_attempt_id,
       issued_at,
       expires_at,
       last_session_id,
@@ -903,6 +908,7 @@ export async function getTrainingCertificationRecords(): Promise<TrainingCertifi
       id,
       trainee_id,
       module_id,
+      quiz_attempt_id,
       issued_at,
       expires_at,
       last_session_id,
@@ -934,6 +940,7 @@ export async function getTrainingCertificationById(
       id,
       trainee_id,
       module_id,
+      quiz_attempt_id,
       issued_at,
       expires_at,
       last_session_id,
@@ -965,6 +972,7 @@ export async function getTrainingCertificationById(
 export async function upsertTrainingCertification(input: {
   trainee_id: string;
   module_id: string;
+  quiz_attempt_id?: string | null;
   last_session_id?: string | null;
   issued_at: string;
   expires_at?: string | null;
@@ -975,6 +983,7 @@ export async function upsertTrainingCertification(input: {
       {
         trainee_id: input.trainee_id,
         module_id: input.module_id,
+        quiz_attempt_id: input.quiz_attempt_id ?? null,
         issued_at: input.issued_at,
         expires_at: input.expires_at ?? null,
         last_session_id: input.last_session_id ?? null,

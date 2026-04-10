@@ -135,14 +135,31 @@ function CertificationDetailPage() {
               label="Last Session Reference"
               value={record.last_session_id ?? 'No linked training session'}
             />
+            <DetailRow
+              label="Linked Quiz Attempt"
+              value={record.quiz_attempt_id ?? 'No linked quiz attempt'}
+            />
             <DetailRow label="Created" value={formatDate(record.created_at)} />
             <DetailRow label="Updated" value={formatDate(record.updated_at)} />
           </div>
 
-          <div style={{ marginTop: '16px' }}>
+          <div style={actionsRowStyle}>
             <span style={status === 'Current' ? currentBadgeStyle : expiredBadgeStyle}>
               {status}
             </span>
+
+            <button
+              type="button"
+              style={reviewButtonStyle}
+              disabled={!record.quiz_attempt_id}
+              onClick={() => {
+                if (record.quiz_attempt_id) {
+                  navigate(`/training/quiz-attempts/${record.quiz_attempt_id}`);
+                }
+              }}
+            >
+              Review Linked Quiz
+            </button>
           </div>
         </ContentCard>
       </div>
@@ -244,6 +261,14 @@ const detailValueStyle: CSSProperties = {
   fontWeight: 700,
 };
 
+const actionsRowStyle: CSSProperties = {
+  marginTop: '16px',
+  display: 'flex',
+  gap: '10px',
+  alignItems: 'center',
+  flexWrap: 'wrap',
+};
+
 const currentBadgeStyle: CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
@@ -264,6 +289,15 @@ const expiredBadgeStyle: CSSProperties = {
   color: '#9a5b13',
   fontWeight: 800,
   fontSize: '12px',
+};
+
+const reviewButtonStyle: CSSProperties = {
+  border: `1px solid ${theme.colors.border}`,
+  background: '#ffffff',
+  borderRadius: '10px',
+  padding: '8px 10px',
+  fontWeight: 700,
+  cursor: 'pointer',
 };
 
 export default CertificationDetailPage;

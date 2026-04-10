@@ -422,6 +422,7 @@ function CertificationQuizRunnerPage() {
       const certification = await upsertTrainingCertification({
         trainee_id: traineeId,
         module_id: moduleId,
+        quiz_attempt_id: attempt.id,
         last_session_id: null,
         issued_at: issuedAt,
         expires_at: expiresAt,
