@@ -205,8 +205,10 @@ function CertificationQuizRunnerPage() {
               };
             });
             setResponses(nextResponses);
+            setResult(null);
           } else if (latestSubmittedAttempt) {
             setAttempt(latestSubmittedAttempt);
+            setResponses({});
             setResult({
               scorePercent: Number(latestSubmittedAttempt.score_percent ?? 0),
               passed: Boolean(latestSubmittedAttempt.passed),
@@ -216,6 +218,10 @@ function CertificationQuizRunnerPage() {
                   questionWithOptions.length
               ),
             });
+          } else {
+            setAttempt(null);
+            setResponses({});
+            setResult(null);
           }
         }
       } catch (err: unknown) {
@@ -232,8 +238,13 @@ function CertificationQuizRunnerPage() {
     return Object.values(responses).filter((item) => item.selectedOptionIds.length > 0).length;
   }, [responses]);
 
+  const currentAttemptAlreadyFinalized =
+    Boolean(certificationRecord && attempt && certificationRecord.quiz_attempt_id === attempt.id);
+
   const canFinalizeCertification =
-    Boolean(result?.passed) && !certificationRecord && Boolean(attempt?.status === 'submitted');
+    Boolean(result?.passed) &&
+    Boolean(attempt?.status === 'submitted') &&
+    !currentAttemptAlreadyFinalized;
 
   async function handleStartOrResume() {
     if (!quiz || !moduleId || !traineeId) {
@@ -256,7 +267,6 @@ function CertificationQuizRunnerPage() {
       setAttempt(createdAttempt);
       setResult(null);
       setResponses({});
-      setCertificationRecord(null);
       setShowPinModal(false);
       setTrainerPin('');
       setTraineePin('');
@@ -467,7 +477,7 @@ function CertificationQuizRunnerPage() {
           <button
             type="button"
             style={secondaryButtonStyle}
-            onClick={() => navigate('/certifications/start')}
+            onClick={() => navigate('/certifications')}
           >
             Back
           </button>
@@ -485,7 +495,7 @@ function CertificationQuizRunnerPage() {
               value={
                 attempt?.status === 'submitted'
                   ? 'Submitted'
-                  : attempt
+                  : attempt?.status === 'in_progress'
                   ? 'In Progress'
                   : 'Not Started'
               }
@@ -494,14 +504,10 @@ function CertificationQuizRunnerPage() {
 
           {error ? <div style={errorStyle}>{error}</div> : null}
 
-          {!attempt || attempt.status === 'in_progress' ? (
+          {!attempt ? (
             <div style={actionRowStyle}>
               <PrimaryButton onClick={handleStartOrResume} disabled={starting}>
-                {starting
-                  ? 'Starting...'
-                  : attempt?.status === 'in_progress'
-                  ? 'Resume Certification Quiz'
-                  : 'Start Certification Quiz'}
+                {starting ? 'Starting...' : 'Start Certification Quiz'}
               </PrimaryButton>
             </div>
           ) : null}
@@ -527,10 +533,17 @@ function CertificationQuizRunnerPage() {
 
             {result.passed ? (
               <div style={postResultBlockStyle}>
-                {certificationRecord ? (
-                  <div style={successMessageStyle}>
-                    Certification completed successfully.
-                  </div>
+                {currentAttemptAlreadyFinalized ? (
+                  <>
+                    <div style={successMessageStyle}>
+                      This certification attempt has already been finalized.
+                    </div>
+                    <div style={actionRowStyle}>
+                      <PrimaryButton onClick={handleStartOrResume} disabled={starting}>
+                        {starting ? 'Starting...' : 'Start New Certification Attempt'}
+                      </PrimaryButton>
+                    </div>
+                  </>
                 ) : (
                   <>
                     <div style={resultHelperTextStyle}>
@@ -553,7 +566,8 @@ function CertificationQuizRunnerPage() {
             ) : (
               <div style={postResultBlockStyle}>
                 <div style={failMessageStyle}>
-                  Certification not awarded. Additional training and a future reattempt are required before certification can be issued.
+                  Certification not awarded. Additional training and a future reattempt are
+                  required before certification can be issued.
                 </div>
                 <div style={actionRowStyle}>
                   <PrimaryButton onClick={handleStartOrResume} disabled={starting}>

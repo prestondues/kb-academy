@@ -13,8 +13,10 @@ type CertificationStatus = 'Current' | 'Expiring Soon' | 'Expired';
 
 type CertificationRow = {
   id: string;
+  traineeId: string;
   traineeName: string;
   username: string;
+  moduleId: string;
   moduleTitle: string;
   departmentName: string;
   issuedAt: string;
@@ -70,8 +72,10 @@ function mapCertification(record: TrainingCertificationListRecord): Certificatio
 
   return {
     id: record.id,
+    traineeId: record.trainee_id,
     traineeName: fullName,
     username,
+    moduleId: record.module_id,
     moduleTitle: record.module?.title ?? 'Untitled Module',
     departmentName: record.module?.department?.name ?? '—',
     issuedAt: formatDateTime(record.issued_at),
@@ -126,8 +130,12 @@ function CertificationsPage() {
             record.status === 'Expiring Soon' || record.status === 'Expired'
         )
         .sort((a, b) => {
-          const aTime = a.expiresAtRaw ? new Date(a.expiresAtRaw).getTime() : Number.MAX_SAFE_INTEGER;
-          const bTime = b.expiresAtRaw ? new Date(b.expiresAtRaw).getTime() : Number.MAX_SAFE_INTEGER;
+          const aTime = a.expiresAtRaw
+            ? new Date(a.expiresAtRaw).getTime()
+            : Number.MAX_SAFE_INTEGER;
+          const bTime = b.expiresAtRaw
+            ? new Date(b.expiresAtRaw).getTime()
+            : Number.MAX_SAFE_INTEGER;
           return aTime - bTime;
         }),
     [records]
@@ -164,7 +172,10 @@ function CertificationsPage() {
           <div style={summaryGridStyle}>
             <SummaryItem label="Total Records" value={String(records.length)} />
             <SummaryItem label="Current" value={String(currentCertifications.length)} />
-            <SummaryItem label="Expiring Soon" value={String(expiringSoonCertifications.length)} />
+            <SummaryItem
+              label="Expiring Soon"
+              value={String(expiringSoonCertifications.length)}
+            />
             <SummaryItem label="Expired" value={String(expiredCertifications.length)} />
           </div>
 
@@ -224,6 +235,16 @@ function CertificationsPage() {
                       }}
                     >
                       Review Quiz
+                    </button>
+
+                    <button
+                      type="button"
+                      style={actionButtonStyle}
+                      onClick={() =>
+                        navigate(`/certifications/start/${record.moduleId}/${record.traineeId}`)
+                      }
+                    >
+                      Recertify
                     </button>
                   </div>
                 </div>
@@ -299,6 +320,16 @@ function CertificationsPage() {
                             }}
                           >
                             Review Quiz
+                          </button>
+
+                          <button
+                            type="button"
+                            style={actionButtonStyle}
+                            onClick={() =>
+                              navigate(`/certifications/start/${record.moduleId}/${record.traineeId}`)
+                            }
+                          >
+                            Recertify
                           </button>
                         </div>
                       </td>
@@ -492,6 +523,16 @@ const reviewButtonsWrapStyle: CSSProperties = {
 const reviewButtonStyle: CSSProperties = {
   border: `1px solid ${theme.colors.border}`,
   background: '#ffffff',
+  borderRadius: '10px',
+  padding: '8px 10px',
+  fontWeight: 700,
+  cursor: 'pointer',
+};
+
+const actionButtonStyle: CSSProperties = {
+  border: '1px solid #d7e6fb',
+  background: '#eef6ff',
+  color: '#194f91',
   borderRadius: '10px',
   padding: '8px 10px',
   fontWeight: 700,

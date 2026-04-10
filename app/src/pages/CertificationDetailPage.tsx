@@ -122,7 +122,10 @@ function CertificationDetailPage() {
 
         <ContentCard title="Record Details" subtitle="Additional certification information.">
           <div style={detailsListStyle}>
-            <DetailRow label="Trainee Department" value={record.trainee?.department?.name ?? '—'} />
+            <DetailRow
+              label="Trainee Department"
+              value={record.trainee?.department?.name ?? '—'}
+            />
             <DetailRow
               label="Recert Frequency"
               value={
@@ -159,6 +162,16 @@ function CertificationDetailPage() {
               }}
             >
               Review Linked Quiz
+            </button>
+
+            <button
+              type="button"
+              style={actionButtonStyle}
+              onClick={() =>
+                navigate(`/certifications/start/${record.module_id}/${record.trainee_id}`)
+              }
+            >
+              Start Recertification
             </button>
           </div>
         </ContentCard>
@@ -294,6 +307,16 @@ const expiredBadgeStyle: CSSProperties = {
 const reviewButtonStyle: CSSProperties = {
   border: `1px solid ${theme.colors.border}`,
   background: '#ffffff',
+  borderRadius: '10px',
+  padding: '8px 10px',
+  fontWeight: 700,
+  cursor: 'pointer',
+};
+
+const actionButtonStyle: CSSProperties = {
+  border: '1px solid #d7e6fb',
+  background: '#eef6ff',
+  color: '#194f91',
   borderRadius: '10px',
   padding: '8px 10px',
   fontWeight: 700,
